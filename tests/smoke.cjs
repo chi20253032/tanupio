@@ -123,9 +123,10 @@ const assert = require('node:assert/strict');
     assert.equal(aiInput.bullets,0,'AI観戦中に人間の射撃入力が混入しています');
 
     // AI must select its own upgrade and never open the human choice screen.
+    const aiLevelBefore=snapshot.level;
     await page.evaluate(()=>window.__NEON_TEST__.forceLevelUp());
     snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
-    assert.equal(snapshot.level,2,'AIのレベルアップが反映されません');
+    assert.equal(snapshot.level,aiLevelBefore+1,'AIのレベルアップが反映されません');
     assert.equal(snapshot.state,'play','AIのレベルアップ後にゲームが停止しています');
     assert.equal(await page.locator('#upgrade').isVisible(),false,'AIが人間の報酬選択画面で停止しています');
 
