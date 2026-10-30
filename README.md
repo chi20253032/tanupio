@@ -11,7 +11,7 @@
 - AI CO-OP：AIパートナーとの協力戦。
 - AI VERSUS：AIライバルとの対決。
 - SEASONAL RAID：日本時間のお正月、節分、ひな祭り、こどもの日、七夕、お盆、ハロウィン、クリスマスに開催する専用イベント。
-- HALLOWEEN RAID：2026年10月31日限定。
+- HALLOWEEN RAID：毎年10月31日限定。
 - ONLINE DUEL：1対1。
 - ONLINE CO-OP：招待ルームで最大10人の協力戦。
 
