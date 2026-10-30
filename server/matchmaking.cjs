@@ -52,15 +52,24 @@ function removeFromQueue(socket) {
 }
 function pairPlayers() {
   while (waiting.length >= 2) {
-    const a = waiting.shift();
-    const b = waiting.shift();
+    let first = -1, second = -1;
+    for (let i = 0; i < waiting.length && first < 0; i++) {
+      for (let j = i + 1; j < waiting.length; j++) {
+        if ((waiting[i].gameMode || 'duel') === (waiting[j].gameMode || 'duel')) {
+          first = i; second = j; break;
+        }
+      }
+    }
+    if (first < 0) return;
+    const a = waiting.splice(first, 1)[0];
+    const b = waiting.splice(second - 1, 1)[0];
     queued.delete(a); queued.delete(b);
     if (a.readyState !== WebSocket.OPEN || b.readyState !== WebSocket.OPEN) continue;
     const room = crypto.randomUUID();
     a.quickMatch = room; b.quickMatch = room;
     a.opponent = b; b.opponent = a;
-    send(a, { type: 'matched', role: 'host', room });
-    send(b, { type: 'matched', role: 'guest', room });
+    send(a, { type: 'matched', role: 'host', room, gameMode: a.gameMode || 'duel' });
+    send(b, { type: 'matched', role: 'guest', room, gameMode: b.gameMode || 'duel' });
   }
 }
 wss.on('connection', (socket, req) => {
@@ -71,28 +80,30 @@ wss.on('connection', (socket, req) => {
     try { msg = JSON.parse(raw.toString()); } catch { socket.close(1003, 'Invalid JSON'); return; }
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'list-rooms') {
-      send(socket, { type: 'room-list', rooms: [...rooms.entries()].filter(([, room]) => room.host.readyState === WebSocket.OPEN && !room.guest).map(([code, room]) => ({ code, name: room.name })) });
+      send(socket, { type: 'room-list', rooms: [...rooms.entries()].filter(([, room]) => room.host.readyState === WebSocket.OPEN && !room.guest).map(([code, room]) => ({ code, name: room.name, gameMode: room.gameMode || 'duel' })) });
     } else if (msg.type === 'create-room') {
       if (socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'room-error', message: 'ルームを作成できません' }); return; }
       const code = makeRoomCode();
       socket.roomCode = code;
-      rooms.set(code, { host: socket, guest: null, name: typeof msg.name === 'string' ? msg.name.slice(0, 40) : 'NEON ARENA ROOM' });
-      send(socket, { type: 'room-created', code });
+      const gameMode = msg.gameMode === 'coop' ? 'coop' : 'duel';
+      rooms.set(code, { host: socket, guest: null, gameMode, name: typeof msg.name === 'string' ? msg.name.slice(0, 40) : 'NEON ARENA ROOM' });
+      send(socket, { type: 'room-created', code, gameMode });
     } else if (msg.type === 'join-room') {
       const code = typeof msg.code === 'string' ? msg.code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) : '';
       const room = rooms.get(code);
       if (!room || room.guest || room.host.readyState !== WebSocket.OPEN || socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'room-error', message: 'ルームが見つからないか、満員です' }); return; }
       if (room.host === socket) { send(socket, { type: 'room-error', message: '自分のルームには参加できません' }); return; }
-      room.guest = socket; socket.roomCode = code;
+      room.guest = socket; socket.roomCode = code; socket.gameMode = room.gameMode || 'duel';
       socket.opponent = room.host; room.host.opponent = socket;
-      send(socket, { type: 'room-joined', code });
-      send(room.host, { type: 'room-player-joined' });
+      send(socket, { type: 'room-joined', code, gameMode: room.gameMode || 'duel' });
+      send(room.host, { type: 'room-player-joined', gameMode: room.gameMode || 'duel' });
     } else if (msg.type === 'game-data') {
       if (socket.opponent && socket.opponent.readyState === WebSocket.OPEN && (socket.roomCode || socket.quickMatch)) {
         send(socket.opponent, { type: 'game-data', data: msg.data });
       }
     } else if (msg.type === 'join') {
       if (socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'error', message: 'Already queued or in a match' }); return; }
+      socket.gameMode = msg.gameMode === 'coop' ? 'coop' : 'duel';
       if (!queued.has(socket)) { waiting.push(socket); queued.add(socket); }
       send(socket, { type: 'queued', position: waiting.length });
       pairPlayers();
