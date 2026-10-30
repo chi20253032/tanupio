@@ -109,8 +109,12 @@ const WebSocket = require('ws');
     const roomListAfterFull = await next(host);
     assert.equal(roomListAfterFull.rooms.length, 0, 'full room is still listed as joinable');
     fullRoom.close();
+    const closureWaiters = [guest, ...extraPlayers].map(member => next(member));
+    host.close();
+    const closureMessages = await Promise.all(closureWaiters);
+    assert.ok(closureMessages.every(message => message.type === 'room-closed'), 'host departure did not close the room for everyone');
     for (const member of extraPlayers) member.close();
-    guest.close(); host.close();
+    guest.close();
     a.close(); b.close();
     process.stdout.write('PASS: duel/coop queue separation, room mode metadata, and bidirectional game relay\n');
   } finally {
