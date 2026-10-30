@@ -263,7 +263,7 @@ const assert = require('node:assert/strict');
     await coopHost.locator('#showJoinBtn').click();
     await coopHost.locator('#hostBtn').click();
     await coopHost.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('招待コード：'));
-    const coopInvite = (await coopHost.locator('#netStatus').textContent()).split('招待コード：')[1]?.trim().split(/\\s/)[0];
+    const coopInvite = (await coopHost.locator('#netStatus').textContent()).split('招待コード：')[1]?.trim().split(' ')[0];
     assert.ok(coopInvite, '協力ルームの招待コードがありません');
     await coopGuest.locator('#online').click();
     await coopGuest.locator('#onlineModeSelect').selectOption('duel'); // Room host setting is authoritative.
