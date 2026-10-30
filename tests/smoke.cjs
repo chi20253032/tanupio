@@ -102,7 +102,10 @@ const assert = require('node:assert/strict');
     await page.locator('#demo').click();
     assert.equal(await page.locator('#modeName').textContent(), 'SURVIVAL');
     assert.equal(await page.evaluate(() => window.__NEON_TEST__.snapshot().ai), true);
-    await page.waitForTimeout(700);
+    await page.evaluate(()=>{const t=window.__NEON_TEST__,p=t.snapshot();t.addEnemy(p.x+190,p.y)});
+    await page.waitForTimeout(2600);
+    snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
+    assert.ok(snapshot.score>0,'AIが敵を攻撃・撃破できません');
 
     const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     mobile.on('pageerror', error => errors.push(error.message));
