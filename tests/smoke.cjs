@@ -10,6 +10,10 @@ const assert = require('node:assert/strict');
     await page.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
     await page.locator('#menu').waitFor({ state: 'visible' });
     assert.match(await page.title(), /NEON ARENA/);
+    assert.equal(await page.locator('#soundToggle').getAttribute('aria-checked'),'true');
+    await page.locator('#soundToggle').click();
+    assert.equal(await page.locator('#soundToggle').getAttribute('aria-checked'),'false','効果音をOFFにできません');
+    await page.locator('#soundToggle').click();
 
     await page.locator('#survival').click();
     await page.locator('#hud').waitFor({ state: 'visible' });
@@ -20,10 +24,6 @@ const assert = require('node:assert/strict');
     assert.ok(snapshot.enemies > 0, 'SURVIVALで敵が出現しません');
     await page.evaluate(()=>{const t=window.__NEON_TEST__;t.clearEnemies();t.setFire(true);t.step(.03);t.setFire(false)});
     assert.ok((await page.evaluate(()=>window.__NEON_TEST__.snapshot())).bullets>0,'空の戦場で射撃弾が残りません');
-    assert.equal(await page.locator('#soundToggle').getAttribute('aria-checked'),'true');
-    await page.locator('#soundToggle').click();
-    assert.equal(await page.locator('#soundToggle').getAttribute('aria-checked'),'false','効果音をOFFにできません');
-    await page.locator('#soundToggle').click();
 
     assert.equal(await page.locator('#autoAimToggle').getAttribute('role'), 'switch');
     await page.evaluate(() => {
