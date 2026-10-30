@@ -112,6 +112,37 @@ const assert = require('node:assert/strict');
     snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
     assert.ok(snapshot.score>0,'AIが敵を攻撃・撃破できません');
 
+    // AI DEMO is autonomous: keyboard, mouse, and touch-style controls cannot steer or fire.
+    await page.evaluate(() => {
+      const t=window.__NEON_TEST__;t.clearEnemies();t.clearManualInput();t.setManualInput();
+      const before=t.snapshot();t.step(.2);const after=t.snapshot();
+      window.__AI_INPUT_TEST__={dx:after.x-before.x,dy:after.y-before.y,bullets:after.bullets};
+    });
+    const aiInput=await page.evaluate(()=>window.__AI_INPUT_TEST__);
+    assert.ok(Math.hypot(aiInput.dx,aiInput.dy)<25,'AI観戦中に人間の移動入力が混入しています');
+    assert.equal(aiInput.bullets,0,'AI観戦中に人間の射撃入力が混入しています');
+
+    // AI must select its own upgrade and never open the human choice screen.
+    await page.evaluate(()=>window.__NEON_TEST__.forceLevelUp());
+    snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
+    assert.equal(snapshot.level,2,'AIのレベルアップが反映されません');
+    assert.equal(snapshot.state,'play','AIのレベルアップ後にゲームが停止しています');
+    assert.equal(await page.locator('#upgrade').isVisible(),false,'AIが人間の報酬選択画面で停止しています');
+
+    // The limited-time Halloween raid is playable in test mode and awards its clear reward.
+    await page.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
+    assert.equal(await page.locator('#halloween').isDisabled(),false,'テスト時にハロウィンイベントを起動できません');
+    await page.locator('#halloween').click();
+    assert.equal(await page.evaluate(()=>window.__NEON_TEST__.snapshot().mode),'halloween');
+    await page.evaluate(()=>{const t=window.__NEON_TEST__;t.clearEnemies();t.setStageKills(12);t.spawnEnemy()});
+    snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
+    assert.equal(snapshot.bosses,1,'ハロウィンイベントのパンプキンキングが出現しません');
+    await page.evaluate(()=>window.__NEON_TEST__.defeatEnemyAt(0));
+    snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
+    assert.equal(snapshot.halloweenReward,1,'イベント報酬が付与されません');
+    assert.equal(snapshot.state,'over','ボス撃破後にイベントクリアになりません');
+    assert.match(await page.locator('#overTitle').textContent(),/HALLOWEEN CLEAR/);
+
     const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     mobile.on('pageerror', error => errors.push(error.message));
     await mobile.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
