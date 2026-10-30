@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: tanupio-matchmaking
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ALLOWED_ORIGIN
+        value: https://chi20253032.github.io
