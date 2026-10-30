@@ -30,6 +30,7 @@ const WebSocket = require('ws');
     a.send(JSON.stringify({ type: 'join', peerId: 'peer-a' }));
     assert.equal((await next(a)).type, 'queued');
     b.send(JSON.stringify({ type: 'join', peerId: 'peer-b' }));
+    assert.equal((await next(b)).type, 'queued');
     const [ma, mb] = await Promise.all([next(a), next(b)]);
     assert.equal(ma.type, 'matched');
     assert.equal(mb.type, 'matched');
