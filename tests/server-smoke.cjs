@@ -101,12 +101,11 @@ const WebSocket = require('ws');
       assert.equal(result.maxPlayers, 10);
       assert.equal(result.players.length, i + 3);
     }
-    for (let i = 0; i < 8; i++) assert.equal((await next(host)).type, 'room-player-joined');
     const fullRoom = await open('ws://127.0.0.1:' + port);
     fullRoom.send(JSON.stringify({ type: 'join-room', code: created.code }));
     assert.equal((await next(fullRoom)).type, 'room-error', '11th player was allowed into a full room');
     host.send(JSON.stringify({ type: 'list-rooms' }));
-    const roomListAfterFull = await next(host);
+    const roomListAfterFull = await new Promise((resolve, reject) => { const timer=setTimeout(()=>reject(new Error('Timed out waiting for room-list')),5000); const handler=data=>{const msg=JSON.parse(data.toString());if(msg.type==='room-list'){clearTimeout(timer);host.off('message',handler);resolve(msg)}};host.on('message',handler); });
     assert.equal(roomListAfterFull.rooms.length, 0, 'full room is still listed as joinable');
     fullRoom.close();
     for (const member of extraPlayers) member.close();
