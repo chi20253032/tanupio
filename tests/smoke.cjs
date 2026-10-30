@@ -93,7 +93,7 @@ const assert = require('node:assert/strict');
     await host.locator('#hostBtn').click();
     await host.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('招待コード:'));
     const inviteText = await host.locator('#netStatus').textContent();
-    const invite = inviteText.split('招待コード:')[1]?.trim().split(/\\s/)[0];
+    const invite = inviteText.split('招待コード:')[1]?.trim().split(/\s/)[0];
     assert.ok(invite, '招待コードを取得できません: ' + inviteText);
     await guest.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
     await guest.waitForFunction(() => !!window.Peer, null, { timeout: 30000 });
