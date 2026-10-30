@@ -95,12 +95,13 @@ wss.on('connection', (socket, req) => {
   socket.playerId = crypto.randomUUID();
   socket.playerName = 'PLAYER';
   socket.isAlive = true;
-  socket.lastMessageAt = 0;
+  socket.messageWindowStart = Date.now();
+  socket.messageCount = 0;
   socket.on('pong', () => { socket.isAlive = true; });
   socket.on('message', raw => {
     const now = Date.now();
-    if (now - socket.lastMessageAt < 8) { socket.close(1008, 'Rate limit'); return; }
-    socket.lastMessageAt = now;
+    if (now - socket.messageWindowStart >= 1000) { socket.messageWindowStart = now; socket.messageCount = 0; }
+    if (++socket.messageCount > 80) { socket.close(1008, 'Rate limit'); return; }
     let msg;
     try { msg = JSON.parse(raw.toString()); } catch { socket.close(1003, 'Invalid JSON'); return; }
     if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') return;
