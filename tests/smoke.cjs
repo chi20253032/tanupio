@@ -258,7 +258,10 @@ const assert = require('node:assert/strict');
     await host.keyboard.down('Space');
     await host.waitForTimeout(1300);
     await host.keyboard.up('Space');
-    await guest.waitForFunction(() => window.__NEON_TEST__.snapshot().hp < 100, null, { timeout: 10000 });
+    await guest.waitForTimeout(1500);
+    const duelDebug = { host: await host.evaluate(() => window.__NEON_TEST__.snapshot()), guest: await guest.evaluate(() => window.__NEON_TEST__.snapshot()) };
+    console.log('DUEL DEBUG', JSON.stringify(duelDebug));
+    assert.ok(duelDebug.guest.hp < 100, 'host bullets did not damage the guest');
     await host.close();
     await guest.close();
 
