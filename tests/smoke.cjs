@@ -18,6 +18,12 @@ const assert = require('node:assert/strict');
     assert.ok(await page.locator('#game').evaluate(c => c.width > 0 && c.height > 0));
     let snapshot = await page.evaluate(() => window.__NEON_TEST__.snapshot());
     assert.ok(snapshot.enemies > 0, 'SURVIVALで敵が出現しません');
+    await page.evaluate(()=>{const t=window.__NEON_TEST__;t.clearEnemies();t.setFire(true);t.step(.03);t.setFire(false)});
+    assert.ok((await page.evaluate(()=>window.__NEON_TEST__.snapshot())).bullets>0,'空の戦場で射撃弾が残りません');
+    assert.equal(await page.locator('#soundToggle').getAttribute('aria-checked'),'true');
+    await page.locator('#soundToggle').click();
+    assert.equal(await page.locator('#soundToggle').getAttribute('aria-checked'),'false','効果音をOFFにできません');
+    await page.locator('#soundToggle').click();
 
     assert.equal(await page.locator('#autoAimToggle').getAttribute('role'), 'switch');
     await page.evaluate(() => {
@@ -84,6 +90,12 @@ const assert = require('node:assert/strict');
     await page.locator('#story').click();
     assert.equal(await page.locator('#modeName').textContent(), 'STORY');
     assert.equal(await page.evaluate(() => window.__NEON_TEST__.snapshot().mode), 'story');
+    assert.equal(await page.locator('#storyMap').isVisible(),true,'ストーリーマップが表示されません');
+    assert.equal(await page.evaluate(()=>window.__NEON_TEST__.snapshot().storyStageCount),8,'ストーリーが8ステージではありません');
+    const storyStages=await page.evaluate(()=>window.__NEON_TEST__.storyStages());
+    assert.ok(storyStages[7].bossHp>=8000&&storyStages[7].hp>=5&&storyStages[7].speed>=1.8,'最終ステージの難易度がMAX級ではありません');
+    const upgradeNames=await page.evaluate(()=>window.__NEON_TEST__.upgradeNames());
+    for(const name of ['クリティカル回路','エーテル磁石','吸収装甲','重力弾','リアクター過給'])assert.ok(upgradeNames.includes(name),'追加強化がありません: '+name);
     await page.evaluate(()=>{const t=window.__NEON_TEST__;t.setStageKills(18);t.spawnEnemy()});
     snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
     assert.equal(snapshot.bosses,1,'ストーリーの各ステージでボスが出現しません');
@@ -94,14 +106,14 @@ const assert = require('node:assert/strict');
     assert.match(await page.locator('#choices').textContent(),/STAGE 1 CLEAR/,'最後のボス撃破でステージクリアになりません');
     await page.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
     await page.locator('#story').click();
-    for (let stage = 1; stage <= 5; stage++) {
+    for (let stage = 1; stage <= 8; stage++) {
       await page.evaluate(() => window.__NEON_TEST__.forceStageClear());
       await page.locator('#choices button').click();
-      if (stage < 5) {
+      if (stage < 8) {
         assert.equal(await page.evaluate(() => window.__NEON_TEST__.snapshot().storyStage), stage + 1);
       }
     }
-    assert.match(await page.locator('#overTitle').textContent(), /STORY CLEAR/);
+    assert.match(await page.locator('#overTitle').textContent(), /STORY COMPLETE/);
 
     await page.reload({ waitUntil: 'networkidle' });
     await page.locator('#demo').click();
