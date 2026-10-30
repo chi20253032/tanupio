@@ -80,8 +80,8 @@ wss.on('connection', (socket, req) => {
       if (!peerId || !room || room.guest || room.host.readyState !== WebSocket.OPEN) { send(socket, { type: 'room-error', message: 'ルームが見つからないか、満員です' }); return; }
       if (room.host === socket) { send(socket, { type: 'room-error', message: '自分のルームには参加できません' }); return; }
       room.guest = socket; socket.peerId = peerId; socket.roomCode = code;
-      send(room.host, { type: 'room-player-joined', guestPeerId: peerId });
       send(socket, { type: 'room-joined', hostPeerId: room.peerId, code });
+      send(room.host, { type: 'room-player-joined', guestPeerId: peerId });
     } else if (msg.type === 'join') {
       const peerId = typeof msg.peerId === 'string' ? msg.peerId.slice(0, 128) : '';
       if (!peerId || socket.peerId || socket.room || socket.roomCode) { send(socket, { type: 'error', message: 'Invalid matchmaking request' }); return; }
