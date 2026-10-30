@@ -1,7 +1,7 @@
 name: NEON ARENA browser smoke tests
 on:
   push:
-    branches: [main, release-candidate]
+    branches: [main, release-1.0.0-final]
   pull_request:
     branches: [main]
   workflow_dispatch:

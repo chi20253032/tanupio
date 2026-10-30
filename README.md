@@ -1,25 +1,37 @@
-# TANUPIO: NEON ARENA
+# TANUPIO: NEON ARENA 1.0.0
 
-## Online rooms and matchmaking
+**正式リリース** — PC・タブレット・スマートフォン対応のネオンアクションゲーム。
 
-Online play supports creating a public room, joining an available room, six-character invite codes, and quick matchmaking. Room discovery and short invite codes are coordinated by the WebSocket matchmaking service; gameplay remains peer-to-peer through PeerJS.
+[今すぐプレイ](https://chi20253032.github.io/tanupio/)
 
-### Automatic online matchmaking
+## ゲームモード
 
-The game uses PeerJS for direct player-to-player gameplay and a small WebSocket service to match two waiting players automatically.
+- **SURVIVAL** — 敵のウェーブを生き残るエンドレスモード
+- **STORY** — 全5ステージ、ボス戦あり
+- **AI DEMO** — AIパイロットのプレイを観戦
+- **ONLINE DUEL** — 招待ルーム、公開ルーム、クイックマッチによる2人対戦
 
-### Deploy the matchmaking service
+PCはWASD / 矢印キー・マウス・Space、タッチ端末は左右の仮想スティックとスキルボタンで操作できます。オートエイムはタイトル画面から切り替え可能です。
 
-1. Open [Render](https://render.com/) and sign in.
-2. Choose **New → Blueprint** and connect this repository.
-3. Render reads `render.yaml` and creates `tanupio-matchmaking`.
-4. Wait for the service health check to pass at `/health`.
+## オンライン対戦
 
-The browser client connects to `wss://tanupio-matchmaking.onrender.com`. If the service name is unavailable, change `MATCHMAKING_URL` near the top of the game script to the WebSocket URL Render assigns.
+オンラインの全モードは **同じWebSocket通信方式** を使用します。ルーム対戦とクイックマッチで通信方式が分かれることはありません。
 
-The Render free service may sleep while idle; the first match after inactivity can take longer. PeerJS connectivity still depends on the public PeerJS signaling service and NAT traversal; a TURN relay may be required on restrictive networks.
+- ルーム作成：6文字の招待コードを発行
+- ルーム参加：公開ルーム一覧または招待コードで参加
+- クイックマッチ：待機中の2人を自動ペアリング
+- ゲーム通信：マッチングサーバーが両プレイヤー間のゲームデータを中継
+- 切断処理：相手への切断通知と待機キューの後片付け
 
-### Local tests
+### マッチングサーバーのデプロイ
+
+Render Blueprintを使って `render.yaml` から `tanupio-matchmaking` をデプロイします。ヘルスチェックURLは `/health` です。クライアントは `wss://tanupio-matchmaking.onrender.com` に接続します。
+
+Renderの無料プランではアイドル時にサービスがスリープする場合があり、休止後の初回接続には時間がかかることがあります。
+
+## 開発・テスト
+
+Node.js 20以降が必要です。
 
 ```sh
 npm install
@@ -27,6 +39,17 @@ npx playwright install --with-deps chromium
 npm test
 ```
 
-## 1.0 Beta candidate
+テストには以下を含みます。
 
-The `main` branch is the 1.0 beta candidate. The browser build is a single-page game; the optional matchmaking service is deployed separately on Render. Run `npm test` before publishing a release. This beta still depends on the public PeerJS signaling service and the configured Render matchmaking service for online play.
+- マッチングサーバーのヘルスチェック、キュー、2人のペアリング
+- クイックマッチの双方向ゲームデータ中継
+- ルーム作成、公開一覧、招待コード参加、双方向中継
+- PCブラウザ2画面での招待ルーム対戦とクイックマッチ対戦
+- PC操作、スマホタッチ操作、SURVIVAL / STORY / AI DEMO
+
+## リリース
+
+- Version: **1.0.0**
+- Release channel: Stable
+- Browser game: GitHub Pages
+- Matchmaking service: Render

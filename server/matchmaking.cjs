@@ -28,12 +28,18 @@ function removeRoom(socket) {
   const room = rooms.get(socket.roomCode);
   if (room && room.host === socket) {
     rooms.delete(socket.roomCode);
-    if (room.guest) send(room.guest, { type: 'room-error', message: 'ホストがルームを退出しました' });
+    if (room.guest) {
+      room.guest.roomCode = null;
+      room.guest.opponent = null;
+      send(room.guest, { type: 'opponent-left' });
+    }
   } else if (room && room.guest === socket) {
     room.guest = null;
-    send(room.host, { type: 'room-player-left' });
+    room.host.opponent = null;
+    send(room.host, { type: 'opponent-left' });
   }
   socket.roomCode = null;
+  socket.opponent = null;
 }
 
 function send(socket, value) {
@@ -51,10 +57,10 @@ function pairPlayers() {
     queued.delete(a); queued.delete(b);
     if (a.readyState !== WebSocket.OPEN || b.readyState !== WebSocket.OPEN) continue;
     const room = crypto.randomUUID();
-    a.room = room; b.room = room;
+    a.quickMatch = room; b.quickMatch = room;
     a.opponent = b; b.opponent = a;
-    send(a, { type: 'matched', role: 'host', peerId: b.peerId, room });
-    send(b, { type: 'matched', role: 'guest', peerId: a.peerId, room });
+    send(a, { type: 'matched', role: 'host', room });
+    send(b, { type: 'matched', role: 'guest', room });
   }
 }
 wss.on('connection', (socket, req) => {
@@ -67,7 +73,7 @@ wss.on('connection', (socket, req) => {
     if (msg.type === 'list-rooms') {
       send(socket, { type: 'room-list', rooms: [...rooms.entries()].filter(([, room]) => room.host.readyState === WebSocket.OPEN && !room.guest).map(([code, room]) => ({ code, name: room.name })) });
     } else if (msg.type === 'create-room') {
-      if (socket.roomCode || socket.peerId) { send(socket, { type: 'room-error', message: 'ルームを作成できません' }); return; }
+      if (socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'room-error', message: 'ルームを作成できません' }); return; }
       const code = makeRoomCode();
       socket.roomCode = code;
       rooms.set(code, { host: socket, guest: null, name: typeof msg.name === 'string' ? msg.name.slice(0, 40) : 'NEON ARENA ROOM' });
@@ -75,20 +81,18 @@ wss.on('connection', (socket, req) => {
     } else if (msg.type === 'join-room') {
       const code = typeof msg.code === 'string' ? msg.code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) : '';
       const room = rooms.get(code);
-      if (!room || room.guest || room.host.readyState !== WebSocket.OPEN) { send(socket, { type: 'room-error', message: 'ルームが見つからないか、満員です' }); return; }
+      if (!room || room.guest || room.host.readyState !== WebSocket.OPEN || socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'room-error', message: 'ルームが見つからないか、満員です' }); return; }
       if (room.host === socket) { send(socket, { type: 'room-error', message: '自分のルームには参加できません' }); return; }
       room.guest = socket; socket.roomCode = code;
       socket.opponent = room.host; room.host.opponent = socket;
       send(socket, { type: 'room-joined', code });
       send(room.host, { type: 'room-player-joined' });
     } else if (msg.type === 'game-data') {
-      if (socket.roomCode && socket.opponent && socket.opponent.readyState === WebSocket.OPEN) {
+      if (socket.opponent && socket.opponent.readyState === WebSocket.OPEN && (socket.roomCode || socket.quickMatch)) {
         send(socket.opponent, { type: 'game-data', data: msg.data });
       }
     } else if (msg.type === 'join') {
-      const peerId = typeof msg.peerId === 'string' ? msg.peerId.slice(0, 128) : '';
-      if (!peerId || socket.peerId || socket.room || socket.roomCode) { send(socket, { type: 'error', message: 'Invalid matchmaking request' }); return; }
-      socket.peerId = peerId;
+      if (socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'error', message: 'Already queued or in a match' }); return; }
       if (!queued.has(socket)) { waiting.push(socket); queued.add(socket); }
       send(socket, { type: 'queued', position: waiting.length });
       pairPlayers();
@@ -99,18 +103,24 @@ wss.on('connection', (socket, req) => {
       removeFromQueue(socket);
       removeRoom(socket);
       if (socket.opponent) {
-        send(socket.opponent, { type: 'opponent-left' });
-        socket.opponent.opponent = null;
+        const opponent = socket.opponent;
+        send(opponent, { type: 'opponent-left' });
+        opponent.opponent = null;
+        opponent.quickMatch = null;
+        opponent.roomCode = null;
       }
-      socket.opponent = null; socket.room = null;
+      socket.opponent = null; socket.quickMatch = null;
     }
   });
   socket.on('close', () => {
     removeFromQueue(socket);
     removeRoom(socket);
     if (socket.opponent) {
-      send(socket.opponent, { type: 'opponent-left' });
-      socket.opponent.opponent = null;
+      const opponent = socket.opponent;
+      send(opponent, { type: 'opponent-left' });
+      opponent.opponent = null;
+      opponent.quickMatch = null;
+      opponent.roomCode = null;
     }
   });
   socket.on('error', () => {});
