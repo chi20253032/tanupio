@@ -24,15 +24,11 @@ const assert = require('node:assert/strict');
     await page.waitForTimeout(250);
     await page.keyboard.up('Space');
 
-    await page.locator('#toMenu').click().catch(async () => {
-      await page.locator('#menu').evaluate(el => el.classList.remove('hidden'));
-    });
+    await page.reload({ waitUntil: 'networkidle' });
     await page.locator('#story').click();
     assert.equal(await page.locator('#modeName').textContent(), 'STORY');
 
-    await page.locator('#toMenu').click().catch(async () => {
-      await page.locator('#menu').evaluate(el => el.classList.remove('hidden'));
-    });
+    await page.reload({ waitUntil: 'networkidle' });
     await page.locator('#demo').click();
     assert.equal(await page.locator('#modeName').textContent(), 'SURVIVAL');
     await page.waitForTimeout(700);
