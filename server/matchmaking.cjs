@@ -12,7 +12,7 @@ const server = http.createServer((req, res) => {
   res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
   res.end('TANUPIO matchmaking service');
 });
-const wss = new WebSocketServer({ server, maxPayload: 1024 });
+const wss = new WebSocketServer({ server, maxPayload: 256 * 1024 });
 const waiting = [];
 const queued = new Set();
 const rooms = new Map();
@@ -67,21 +67,24 @@ wss.on('connection', (socket, req) => {
     if (msg.type === 'list-rooms') {
       send(socket, { type: 'room-list', rooms: [...rooms.entries()].filter(([, room]) => room.host.readyState === WebSocket.OPEN && !room.guest).map(([code, room]) => ({ code, name: room.name })) });
     } else if (msg.type === 'create-room') {
-      const peerId = typeof msg.peerId === 'string' ? msg.peerId.slice(0, 128) : '';
-      if (!peerId || socket.roomCode || socket.peerId) { send(socket, { type: 'room-error', message: 'ルームを作成できません' }); return; }
+      if (socket.roomCode || socket.peerId) { send(socket, { type: 'room-error', message: 'ルームを作成できません' }); return; }
       const code = makeRoomCode();
-      socket.peerId = peerId; socket.roomCode = code;
-      rooms.set(code, { host: socket, guest: null, peerId, name: typeof msg.name === 'string' ? msg.name.slice(0, 40) : 'NEON ARENA ROOM' });
+      socket.roomCode = code;
+      rooms.set(code, { host: socket, guest: null, name: typeof msg.name === 'string' ? msg.name.slice(0, 40) : 'NEON ARENA ROOM' });
       send(socket, { type: 'room-created', code });
     } else if (msg.type === 'join-room') {
       const code = typeof msg.code === 'string' ? msg.code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) : '';
-      const peerId = typeof msg.peerId === 'string' ? msg.peerId.slice(0, 128) : '';
       const room = rooms.get(code);
-      if (!peerId || !room || room.guest || room.host.readyState !== WebSocket.OPEN) { send(socket, { type: 'room-error', message: 'ルームが見つからないか、満員です' }); return; }
+      if (!room || room.guest || room.host.readyState !== WebSocket.OPEN) { send(socket, { type: 'room-error', message: 'ルームが見つからないか、満員です' }); return; }
       if (room.host === socket) { send(socket, { type: 'room-error', message: '自分のルームには参加できません' }); return; }
-      room.guest = socket; socket.peerId = peerId; socket.roomCode = code;
-      send(socket, { type: 'room-joined', hostPeerId: room.peerId, code });
-      send(room.host, { type: 'room-player-joined', guestPeerId: peerId });
+      room.guest = socket; socket.roomCode = code;
+      socket.opponent = room.host; room.host.opponent = socket;
+      send(socket, { type: 'room-joined', code });
+      send(room.host, { type: 'room-player-joined' });
+    } else if (msg.type === 'game-data') {
+      if (socket.roomCode && socket.opponent && socket.opponent.readyState === WebSocket.OPEN) {
+        send(socket.opponent, { type: 'game-data', data: msg.data });
+      }
     } else if (msg.type === 'join') {
       const peerId = typeof msg.peerId === 'string' ? msg.peerId.slice(0, 128) : '';
       if (!peerId || socket.peerId || socket.room || socket.roomCode) { send(socket, { type: 'error', message: 'Invalid matchmaking request' }); return; }
