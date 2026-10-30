@@ -73,7 +73,7 @@ wss.on('connection', (socket, req) => {
     if (msg.type === 'list-rooms') {
       send(socket, { type: 'room-list', rooms: [...rooms.entries()].filter(([, room]) => room.host.readyState === WebSocket.OPEN && !room.guest).map(([code, room]) => ({ code, name: room.name })) });
     } else if (msg.type === 'create-room') {
-      if (socket.roomCode || socket.quickMatch || socket.opponent || socket.peerId) { send(socket, { type: 'room-error', message: 'ルームを作成できません' }); return; }
+      if (socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'room-error', message: 'ルームを作成できません' }); return; }
       const code = makeRoomCode();
       socket.roomCode = code;
       rooms.set(code, { host: socket, guest: null, name: typeof msg.name === 'string' ? msg.name.slice(0, 40) : 'NEON ARENA ROOM' });
