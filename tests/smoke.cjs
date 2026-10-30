@@ -179,6 +179,7 @@ const assert = require('node:assert/strict');
     await page.evaluate(()=>window.__NEON_TEST__.forceLevelUp());
     snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
     assert.equal(snapshot.level,aiLevelBefore+1,'AIのレベルアップが反映されません');
+    assert.equal(snapshot.playerAutoFire,true,'AIが最適な強化候補を選べません');
     assert.equal(snapshot.state,'play','AIのレベルアップ後にゲームが停止しています');
     assert.equal(await page.locator('#upgrade').isVisible(),false,'AIが人間の報酬選択画面で停止しています');
 
