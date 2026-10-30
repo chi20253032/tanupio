@@ -29,8 +29,15 @@ const assert = require('node:assert/strict');
     await page.waitForTimeout(500);
     snapshot = await page.evaluate(() => window.__NEON_TEST__.snapshot());
     assert.equal(snapshot.autoAim, true, '初心者向けオートエイムをONにできません');
-    assert.ok(snapshot.target && snapshot.target.y < snapshot.y - 100, '全方向から最も近い敵を選択できません');
-    assert.ok(snapshot.bullets > 0, 'オートエイム時に自動射撃されません');
+    assert.ok(snapshot.target && snapshot.target.x > snapshot.x + 100, '前方の敵をターゲットできません');
+    assert.equal(snapshot.bullets, 0, 'オートエイムが自動射撃しています');
+    await page.evaluate(() => { const t = window.__NEON_TEST__; t.addOrb(t.snapshot().x + 35, t.snapshot().y); t.step(0.04); });
+    snapshot = await page.evaluate(() => window.__NEON_TEST__.snapshot());
+    assert.equal(snapshot.orbAbsorbing, true, '経験値オーブの吸収アニメーションが開始しません');
+    await page.evaluate(() => { const t = window.__NEON_TEST__; for (let i = 0; i < 10; i++) t.step(0.04); });
+    snapshot = await page.evaluate(() => window.__NEON_TEST__.snapshot());
+    assert.equal(snapshot.orbCount, 0, '吸収後もオーブが残っています');
+    assert.equal(snapshot.xp, 1, 'オーブ吸収時に経験値が加算されません');
     await page.evaluate(() => document.querySelector('#autoAimToggle').click());
     assert.equal(await page.locator('#autoAimToggle').getAttribute('aria-checked'), 'false');
 
