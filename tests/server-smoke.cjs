@@ -56,7 +56,7 @@ const WebSocket = require('ws');
     assert.equal(joined.type, 'room-joined');
     assert.equal(joined.hostPeerId, 'peer-host');
     process.stdout.write('WAIT: join-room host\n');
-    const hostJoined = await next(host);
+    const hostJoined = await hostNotice;
     assert.equal(hostJoined.type, 'room-player-joined');
     assert.equal(hostJoined.guestPeerId, 'peer-guest');
     guest.send(JSON.stringify({ type: 'join-room', code: created.code, peerId: 'peer-third' }));
