@@ -101,6 +101,7 @@ const WebSocket = require('ws');
       assert.equal(result.maxPlayers, 10);
       assert.equal(result.players.length, i + 3);
     }
+    for (let i = 0; i < 8; i++) assert.equal((await next(host)).type, 'room-player-joined');
     const fullRoom = await open('ws://127.0.0.1:' + port);
     fullRoom.send(JSON.stringify({ type: 'join-room', code: created.code }));
     assert.equal((await next(fullRoom)).type, 'room-error', '11th player was allowed into a full room');
