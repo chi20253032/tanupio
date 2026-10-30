@@ -15,5 +15,6 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npx playwright install --with-deps chromium
+      - run: PORT=10000 node server/matchmaking.cjs > /tmp/neon-matchmaking.log 2>&1 &
       - run: python3 -m http.server 4173 > /tmp/neon-arena-server.log 2>&1 &
       - run: npm test
