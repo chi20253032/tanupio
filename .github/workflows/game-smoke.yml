@@ -16,5 +16,6 @@ jobs:
       - run: npm install
       - run: npx playwright install --with-deps chromium
       - run: PORT=10000 node server/matchmaking.cjs > /tmp/neon-matchmaking.log 2>&1 &
+      - run: for i in $(seq 1 30); do curl -fsS http://127.0.0.1:10000/health && exit 0; sleep 1; done; cat /tmp/neon-matchmaking.log; exit 1
       - run: python3 -m http.server 4173 > /tmp/neon-arena-server.log 2>&1 &
       - run: npm test
