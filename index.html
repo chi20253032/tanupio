@@ -36,7 +36,7 @@
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (()=>{'use strict';
-const MATCHMAKING_URL='wss://tanupio-matchmaking.onrender.com';
+const MATCHMAKING_URL=new URLSearchParams(location.search).has('test')?'ws://127.0.0.1:10000':'wss://tanupio-matchmaking.onrender.com';
 const $=s=>document.querySelector(s),canvas=$('#game'),ctx=canvas.getContext('2d');let W=innerWidth,H=innerHeight,D=1;
 function resize(){W=innerWidth;H=innerHeight;D=Math.min(devicePixelRatio||1,2);canvas.width=W*D;canvas.height=H*D;ctx.setTransform(D,0,0,D,0,0)}addEventListener('resize',resize);resize();
 let state='menu',mode='survival',autoAim=false,autoAimTarget=null,player=null,remote=null,enemies=[],bullets=[],particles=[],orbs=[],keys={},score=0,kills=0,wave=1,level=1,xp=0,nextXp=5,spawn=0,elapsed=0,last=performance.now(),fireCd=0,skillCd=0,toastT=0,storyStage=1,stageKills=0,bossSpawned=false,bossDefeated=false,ai=false,peer=null,conn=null,matchSocket=null,netRole='',netTimer=0,remoteInput={x:0,y:0,ax:1,ay:0,fire:false,skill:false},remoteBullets=[],hostBullets=[],remoteFireCd=0,localInput={x:0,y:0,ax:1,ay:0,fire:false,skill:false};
