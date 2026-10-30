@@ -52,11 +52,17 @@ function removeFromQueue(socket) {
 }
 function pairPlayers() {
   while (waiting.length >= 2) {
-    const a = waiting[0];
-    const matchIndex = waiting.findIndex((candidate, index) => index > 0 && candidate.gameMode === a.gameMode);
-    if (matchIndex < 0) return;
-    waiting.splice(0, 1);
-    const b = waiting.splice(matchIndex - 1, 1)[0];
+    let first = -1, second = -1;
+    for (let i = 0; i < waiting.length && first < 0; i++) {
+      for (let j = i + 1; j < waiting.length; j++) {
+        if ((waiting[i].gameMode || 'duel') === (waiting[j].gameMode || 'duel')) {
+          first = i; second = j; break;
+        }
+      }
+    }
+    if (first < 0) return;
+    const a = waiting.splice(first, 1)[0];
+    const b = waiting.splice(second - 1, 1)[0];
     queued.delete(a); queued.delete(b);
     if (a.readyState !== WebSocket.OPEN || b.readyState !== WebSocket.OPEN) continue;
     const room = crypto.randomUUID();
