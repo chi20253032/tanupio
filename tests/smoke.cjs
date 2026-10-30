@@ -276,7 +276,7 @@ const assert = require('node:assert/strict');
     assert.equal(await coopGuest.evaluate(() => window.__NEON_TEST__.snapshot().onlineMode), 'coop');
     await coopHost.waitForFunction(() => window.__NEON_TEST__.snapshot().enemies > 0, null, { timeout: 10000 });
     await coopGuest.waitForFunction(() => window.__NEON_TEST__.snapshot().enemies > 0, null, { timeout: 10000 });
-    await coopHost.evaluate(() => { const t=window.__NEON_TEST__,p=t.snapshot();t.clearEnemies();t.addEnemy(p.x+250,p.y); });
+    await coopHost.evaluate(() => { const t=window.__NEON_TEST__,p=t.snapshot();t.clearEnemies();t.addEnemy(p.remote.x+250,p.remote.y); });
     await coopGuest.evaluate(() => { window.__NEON_TEST__.setFacing(1,0);window.__NEON_TEST__.setFire(true); });
     await coopHost.waitForFunction(() => window.__NEON_TEST__.snapshot().score > 0, null, { timeout: 10000 });
     await coopGuest.evaluate(() => window.__NEON_TEST__.setFire(false));
