@@ -29,8 +29,8 @@ const assert = require('node:assert/strict');
     await page.waitForTimeout(500);
     snapshot = await page.evaluate(() => window.__NEON_TEST__.snapshot());
     assert.equal(snapshot.autoAim, true, '初心者向けオートエイムをONにできません');
-    assert.ok(snapshot.target && snapshot.target.y < snapshot.y - 100, '全方向から最も近い敵を選択できません');
-    assert.ok(snapshot.bullets > 0, 'オートエイム時に自動射撃されません');
+    assert.ok(snapshot.target && snapshot.target.x > snapshot.x + 100, '前方の敵をターゲットできません');
+    assert.equal(snapshot.bullets, 0, 'オートエイムが自動射撃しています');
     await page.evaluate(() => document.querySelector('#autoAimToggle').click());
     assert.equal(await page.locator('#autoAimToggle').getAttribute('aria-checked'), 'false');
 
