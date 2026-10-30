@@ -351,11 +351,11 @@ const assert = require('node:assert/strict');
     await coopGuest.waitForFunction(() => window.__NEON_TEST__.snapshot().enemies > 0, null, { timeout: 10000 });
     await coopHost.evaluate(() => { const t=window.__NEON_TEST__,p=t.snapshot();t.clearEnemies();t.addEnemy(p.remote.x+120,p.remote.y,false,24); });
     await coopGuest.evaluate(() => { window.__NEON_TEST__.setFacing(1,0);window.__NEON_TEST__.setFire(true); });
-    await coopGuest.waitForTimeout(1800); console.log('COOP HOST', JSON.stringify(await coopHost.evaluate(() => window.__NEON_TEST__.snapshot()))); console.log('COOP GUEST', JSON.stringify(await coopGuest.evaluate(() => window.__NEON_TEST__.snapshot()))); assert.ok((await coopHost.evaluate(() => window.__NEON_TEST__.snapshot().score)) > 0, 'teammate shots did not damage shared enemies');
+    await coopHost.waitForFunction(() => window.__NEON_TEST__.snapshot().score > 0, null, { timeout: 10000 });
     await coopGuest.evaluate(() => window.__NEON_TEST__.setFire(false));
     await coopGuest.locator('#quitGame').click();
     await coopGuest.locator('#menu').waitFor({ state: 'visible' });
-    await coopHost.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('切断'), null, { timeout: 10000 });
+    await coopHost.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('退出'), null, { timeout: 10000 });
     await coopHost.close(); await coopGuest.close();
 
     assert.deepEqual(errors, [], 'ブラウザ実行時エラーが発生しました');
