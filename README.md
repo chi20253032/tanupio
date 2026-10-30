@@ -49,6 +49,6 @@ npm test
 ## リリース
 
 - Version: **1.2.0**
-- Channel: Release candidate pending CI
+- Channel: Stable
 - Browser game: GitHub Pages
 - Matchmaking service: Render
