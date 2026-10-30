@@ -159,22 +159,24 @@ function roomSocket(){
 }
 
 function handleRoomMessage(data,ws){
- if(data.type==='game-data'){if(conn&&conn.socket===ws)conn.emit('data',data.data);return}
+ if(data.type==='game-data'){if(conn&&conn.socket===ws)conn.emit('data',{...data.data,from:data.from});return}
+ if(data.type==='room-roster'){if(conn&&conn.socket===ws)conn.emit('data',{type:'roster',players:data.players||[]});return}
+ if(data.type==='room-player-left'){if(conn&&conn.socket===ws)conn.emit('data',{type:'player-left',playerId:data.playerId});return}
  if(data.type==='room-list'){renderRooms(data.rooms||[]);return}
- if(data.type==='room-created'){netStatus('ルームを作成しました！ 招待コード： '+data.code+' ／ 相手の参加を待っています');$('#inviteCode').value=data.code;return}
- if(data.type==='room-joined'){onlineMode=data.gameMode||onlineMode;netStatus('サーバー中継で接続しています…');setupConnection(createRelayConnection(ws),'guest',onlineMode);return}
- if(data.type==='room-player-joined'){onlineMode=data.gameMode||onlineMode;netStatus('参加者が見つかりました。接続しています…');setupConnection(createRelayConnection(ws),'host',onlineMode);return}
- if(data.type==='room-player-left'){netStatus('相手が退出しました');if(conn&&conn.socket===ws){conn.emit('close');conn=null}return}
+ if(data.type==='room-created'){roomPlayerId=data.playerId||'';netStatus('ルームを作成しました！ 招待コード： '+data.code+' ／ 参加者 1 / 10 人');$('#inviteCode').value=data.code;return}
+ if(data.type==='room-joined'){onlineMode=data.gameMode||onlineMode;roomPlayerId=data.playerId||'';netStatus('10人協力アリーナに接続しています…');setupConnection(createRelayConnection(ws),'guest',onlineMode,roomPlayerId,data.players||[]);return}
+ if(data.type==='room-player-joined'){if(conn&&conn.socket===ws){conn.emit('data',{type:'roster',players:data.players||[]});netStatus('オンライン参加者 '+(data.players||[]).length+' / 10 人');return}onlineMode=data.gameMode||onlineMode;netStatus('参加者が接続しました。10人アリーナを開始します…');setupConnection(createRelayConnection(ws),'host',onlineMode,roomPlayerId,data.players||[]);return}
+ if(data.type==='room-player-left'){netStatus('参加者が退出しました');if(conn&&conn.socket===ws)conn.emit('data',{type:'player-left',playerId:data.playerId});return}
  if(data.type==='room-error'){netStatus(data.message||'ルーム操作に失敗しました');$('#hostBtn').disabled=false;$('#autoMatchBtn').disabled=false;$('#cancelMatchBtn').disabled=true;return}
  if(data.type==='queued'){netStatus('対戦相手を検索中… 参加者が見つかるまでこの画面で待機します');return}
- if(data.type==='matched'){onlineMode=data.gameMode||onlineMode;netStatus('参加者が見つかりました！通信を確立しています…');setupConnection(createRelayConnection(ws),data.role,onlineMode);return}
+ if(data.type==='matched'){onlineMode=data.gameMode||onlineMode;roomPlayerId=data.playerId||'';netStatus('参加者が見つかりました！通信を確立しています…');setupConnection(createRelayConnection(ws),data.role,onlineMode,roomPlayerId,[]);return}
  if(data.type==='opponent-left'){netStatus('相手が切断しました。もう一度参加できます');if(conn&&conn.socket===ws){conn.emit('close');conn=null}return}
  if(data.type==='error')netStatus('通信エラー：'+(data.message||'unknown'));
 }
 function renderRooms(rooms){
  const list=$('#roomList');if(!list)return;list.innerHTML='';
  if(!rooms.length){list.innerHTML='<p class="muted">現在公開ルームはありません。自分で作成するか、招待コードを使ってください。</p>';return}
- rooms.forEach(room=>{const item=document.createElement('div');item.className='room-item';const info=document.createElement('div');const name=document.createElement('b');name.textContent=room.name||'NEON ARENA ROOM';const meta=document.createElement('small');meta.textContent='1 / 2 人 · 参加可能';info.append(name,meta);const btn=document.createElement('button');btn.className='btn';btn.textContent='参加';btn.onclick=()=>joinRoom(room.code);item.append(info,btn);list.append(item)});
+ rooms.forEach(room=>{const item=document.createElement('div');item.className='room-item';const info=document.createElement('div');const name=document.createElement('b');name.textContent=room.name||'NEON ARENA ROOM';const meta=document.createElement('small');meta.textContent=(room.players||1)+' / '+(room.maxPlayers||10)+' 人 · 参加可能';info.append(name,meta);const btn=document.createElement('button');btn.className='btn';btn.textContent='参加';btn.onclick=()=>joinRoom(room.code);item.append(info,btn);list.append(item)});
 }
 async function refreshRooms(){
  try{const ws=matchSocket&&matchSocket.readyState===WebSocket.OPEN?matchSocket:await roomSocket();ws.send(JSON.stringify({type:'list-rooms'}));}
