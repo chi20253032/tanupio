@@ -1,6 +1,10 @@
 # TANUPIO: NEON ARENA
 
-## Automatic online matchmaking
+## Online rooms and matchmaking
+
+Online play supports creating a public room, joining an available room, six-character invite codes, and quick matchmaking. Room discovery and short invite codes are coordinated by the WebSocket matchmaking service; gameplay remains peer-to-peer through PeerJS.
+
+### Automatic online matchmaking
 
 The game uses PeerJS for direct player-to-player gameplay and a small WebSocket service to match two waiting players automatically.
 
