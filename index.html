@@ -17,13 +17,14 @@
 <div class="overlay" id="menu"><div class="panel"><div class="eyebrow">A ORIGINAL GAME BY TANUPIO</div><h1>NEON <span>ARENA</span></h1><p class="lead">狙うのは自分。生き残るのも自分。<br>スマホ操作に最適化したネオン・サバイバルアクション。</p><div class="modegrid"><button class="mode" id="survival"><b>♾ SURVIVAL</b><small>体力が0になるまで戦い続ける無限モード</small></button><button class="mode" id="story"><b>◆ STORY</b><small>全5ステージ。ボスを倒して物語を進めよう</small></button><button class="mode" id="demo"><b>◈ AI DEMO</b><small>AIのお手本プレイを観戦する</small></button><button class="mode" id="online"><b>◎ ONLINE DUEL</b><small>友達とP2P対戦。招待コード方式・β版</small></button></div><p class="muted">スマホ：左スティックで移動、右スティックで照準・射撃。PC：WASD移動、マウス照準、クリック射撃。</p></div></div>
 <div class="overlay hidden" id="upgrade"><div class="panel"><div class="eyebrow">LEVEL UP REWARD</div><h1>LEVEL <span>UP!</span></h1><p class="lead">強化を選択。レベルアップ時にHPも少し回復！</p><div class="choice" id="choices"></div></div></div>
 <div class="overlay hidden" id="over"><div class="panel"><div class="eyebrow">SIGNAL LOST</div><h1 id="overTitle">GAME <span>OVER</span></h1><p class="lead" id="result"></p><button class="btn" id="retry">もう一度プレイ</button><button class="btn alt" id="toMenu">タイトルへ戻る</button></div></div>
-<div class="overlay hidden" id="onlinePanel"><div class="panel"><div class="eyebrow">PEER-TO-PEER BETA</div><h1>ONLINE <span>DUEL</span></h1><p class="lead">ブラウザ間を直接接続する実験的な1対1対戦。ホストがコードを共有し、相手が入力して接続します。</p><button class="btn" id="hostBtn">対戦部屋を作成</button><input id="peerCode" placeholder="相手の招待コード" autocomplete="off" style="width:100%;margin-top:10px;padding:13px;border-radius:12px;border:1px solid #405575;background:#0b1425;color:white"><button class="btn alt" id="joinBtn">コードで参加</button><p class="muted" id="netStatus">接続にはインターネットとPeerJSの公開シグナリングサービスを使用します。</p><button class="btn alt" id="onlineBack">戻る</button></div></div>
+<div class="overlay hidden" id="onlinePanel"><div class="panel"><div class="eyebrow">ONLINE MATCHMAKING</div><h1>ONLINE <span>DUEL</span></h1><p class="lead">対戦相手を自動検索して1対1バトル。見つかるまでこの画面で待機します。</p><button class="btn" id="autoMatchBtn">対戦相手を探す</button><button class="btn alt" id="cancelMatchBtn" disabled>検索をキャンセル</button><details style="margin-top:14px;text-align:left"><summary>招待コードで対戦（予備機能）</summary><button class="btn alt" id="hostBtn">対戦部屋を作成</button><input id="peerCode" placeholder="相手の招待コード" autocomplete="off" style="width:100%;margin-top:10px;padding:13px;border-radius:12px;border:1px solid #405575;background:#0b1425;color:white"><button class="btn alt" id="joinBtn">コードで参加</button></details><p class="muted" id="netStatus">自動マッチングサーバーに接続して対戦相手を探します。</p><button class="btn alt" id="onlineBack">戻る</button></div></div>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (()=>{'use strict';
+const MATCHMAKING_URL='wss://tanupio-matchmaking.onrender.com';
 const $=s=>document.querySelector(s),canvas=$('#game'),ctx=canvas.getContext('2d');let W=innerWidth,H=innerHeight,D=1;
 function resize(){W=innerWidth;H=innerHeight;D=Math.min(devicePixelRatio||1,2);canvas.width=W*D;canvas.height=H*D;ctx.setTransform(D,0,0,D,0,0)}addEventListener('resize',resize);resize();
-let state='menu',mode='survival',player=null,remote=null,enemies=[],bullets=[],particles=[],orbs=[],keys={},score=0,kills=0,wave=1,level=1,xp=0,nextXp=5,spawn=0,elapsed=0,last=performance.now(),fireCd=0,skillCd=0,toastT=0,storyStage=1,stageKills=0,ai=false,peer=null,conn=null,netRole='',netTimer=0,remoteInput={x:0,y:0,ax:1,ay:0,fire:false,skill:false},remoteBullets=[],hostBullets=[],remoteFireCd=0,localInput={x:0,y:0,ax:1,ay:0,fire:false,skill:false};
+let state='menu',mode='survival',player=null,remote=null,enemies=[],bullets=[],particles=[],orbs=[],keys={},score=0,kills=0,wave=1,level=1,xp=0,nextXp=5,spawn=0,elapsed=0,last=performance.now(),fireCd=0,skillCd=0,toastT=0,storyStage=1,stageKills=0,ai=false,peer=null,conn=null,matchSocket=null,netRole='',netTimer=0,remoteInput={x:0,y:0,ax:1,ay:0,fire:false,skill:false},remoteBullets=[],hostBullets=[],remoteFireCd=0,localInput={x:0,y:0,ax:1,ay:0,fire:false,skill:false};
 const move={x:0,y:0},aim={x:0,y:0};let mouse={x:W/2+100,y:H/2,fire:false};
 const upgrades=[
 {name:'パワーコア',desc:'攻撃力 +30%',apply:()=>player.damage*=1.3},
@@ -88,9 +89,43 @@ canvas.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){mouse.x=e.
 $('#survival').onclick=()=>start('survival');$('#story').onclick=()=>start('story');$('#demo').onclick=()=>reset('survival',true);$('#retry').onclick=()=>start(mode);$('#toMenu').onclick=()=>{disconnect();state='menu';$('#hud').style.display='none';$('#over').classList.add('hidden');$('#menu').classList.remove('hidden')};
 $('#online').onclick=()=>{$('#menu').classList.add('hidden');$('#onlinePanel').classList.remove('hidden')};$('#onlineBack').onclick=()=>{$('#onlinePanel').classList.add('hidden');$('#menu').classList.remove('hidden')};
 function netStatus(t){$('#netStatus').textContent=t}
+function stopMatchmaking(){
+ if(matchSocket){try{matchSocket.send(JSON.stringify({type:'cancel'}));matchSocket.close()}catch{}matchSocket=null}
+ $('#autoMatchBtn').disabled=false;$('#cancelMatchBtn').disabled=true;
+}
+function startMatchmaking(){
+ if(!window.Peer||!window.WebSocket){netStatus('オンライン機能を読み込めません。通信環境を確認してください');return}
+ disconnect();$('#autoMatchBtn').disabled=true;$('#cancelMatchBtn').disabled=false;netStatus('マッチングサーバーに接続中…');
+ const ws=new WebSocket(MATCHMAKING_URL);matchSocket=ws;
+ ws.onopen=()=>{
+   peer=new Peer();
+   peer.on('open',id=>{if(matchSocket!==ws)return;ws.send(JSON.stringify({type:'join',peerId:id}));netStatus('対戦相手を検索中… 相手が見つかるまでお待ちください')});
+   peer.on('connection',c=>{if(netRole==='guest'){stopMatchmaking();setupConnection(c,'guest')}});
+   peer.on('error',e=>{netStatus('PeerJS接続エラー: '+e.type);stopMatchmaking()});
+ };
+ ws.onmessage=event=>{
+   let data;try{data=JSON.parse(event.data)}catch{return}
+   if(data.type==='queued'){netStatus('対戦相手を検索中… 待機順 '+data.position);return}
+   if(data.type==='matched'){
+     netRole=data.role;netStatus('相手が見つかりました！ゲーム接続中…');
+     if(data.role==='host'){
+       const c=peer.connect(data.peerId,{reliable:true});
+       c.on('open',()=>{stopMatchmaking();setupConnection(c,'host')});
+       c.on('error',()=>{netStatus('対戦相手との接続に失敗しました。もう一度検索してください');stopMatchmaking()});
+     }else{netStatus('相手の接続を待っています…')}
+     return;
+   }
+   if(data.type==='opponent-left'){netStatus('相手が切断しました。もう一度検索できます');stopMatchmaking()}
+   if(data.type==='error'){netStatus('マッチングエラー: '+(data.message||'unknown'));stopMatchmaking()}
+ };
+ ws.onerror=()=>{netStatus('マッチングサーバーに接続できません。サーバーのデプロイ状況を確認してください');stopMatchmaking()};
+ ws.onclose=()=>{if(matchSocket===ws)matchSocket=null;$('#autoMatchBtn').disabled=false;$('#cancelMatchBtn').disabled=true};
+}
+$('#autoMatchBtn').onclick=startMatchmaking;
+$('#cancelMatchBtn').onclick=()=>{stopMatchmaking();disconnect();netStatus('マッチングをキャンセルしました')};
 function cleanAxis(v){let n=Number(v);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):0}
 function cleanInput(d){return{x:cleanAxis(d?.x),y:cleanAxis(d?.y),ax:cleanAxis(d?.ax),ay:cleanAxis(d?.ay),fire:d?.fire===true,skill:d?.skill===true}}
-function disconnect(){try{if(conn)conn.close();if(peer)peer.destroy()}catch{}conn=null;peer=null;remote=null;netRole=''}
+function disconnect(){stopMatchmaking();try{if(conn)conn.close();if(peer)peer.destroy()}catch{}conn=null;peer=null;remote=null;netRole=''}
 function setupConnection(c,role){conn=c;netRole=role;c.on('open',()=>{netStatus('接続成功！対戦を開始します。');reset('online',false);if(role==='host')remote={x:W*.72,y:H*.5,r:13,hp:100,damage:24};else{player.x=W*.72;remote={x:W*.5,y:H*.5,r:13,hp:100}}toast('ONLINE CONNECTED')});c.on('data',data=>{if(!data||typeof data!=='object')return;if(data.type==='state'&&role==='guest'){remote={x:data.x*W,y:data.y*H,r:13,hp:data.hp};if(player)player.hp=data.rhp;remoteBullets=(data.remoteBullets||[]).map(b=>({x:b.x*W,y:b.y*H}));hostBullets=(data.bullets||[]).map(b=>({x:b.x*W,y:b.y*H}));if(data.hp<=0){toast('HOST DOWN');state='over';$('#overTitle').innerHTML='YOU <span>WIN!</span>';$('#result').textContent='相手のHPが0になりました';$('#over').classList.remove('hidden')}else if(data.rhp<=0){state='over';$('#overTitle').innerHTML='YOU <span>LOSE</span>';$('#result').textContent='HPが0になりました';$('#over').classList.remove('hidden')}}if(data.type==='input'&&role==='host'){remoteInput=cleanInput(data)}});c.on('close',()=>{netStatus('接続が切断されました');remote=null;toast('DISCONNECTED')});c.on('error',e=>netStatus('通信エラー: '+e.type))}
 $('#hostBtn').onclick=()=>{if(!window.Peer){netStatus('PeerJSを読み込めません。通信環境を確認してください');return}disconnect();peer=new Peer();netStatus('部屋を作成中…');peer.on('open',id=>{netStatus('招待コード: '+id+' （このコードを相手に共有）')});peer.on('connection',c=>setupConnection(c,'host'));peer.on('error',e=>netStatus('接続エラー: '+e.type))};
 $('#joinBtn').onclick=()=>{let id=$('#peerCode').value.trim();if(!id){netStatus('招待コードを入力してください');return}if(!window.Peer){netStatus('PeerJSを読み込めません');return}disconnect();peer=new Peer();netStatus('相手に接続中…');peer.on('open',()=>setupConnection(peer.connect(id,{reliable:true}),'guest'));peer.on('error',e=>netStatus('接続エラー: '+e.type))};
