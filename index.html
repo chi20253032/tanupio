@@ -168,6 +168,7 @@ function handleRoomMessage(data,ws){
  if(data.type==='room-joined'){onlineMode=data.gameMode||onlineMode;roomPlayerId=data.playerId||'';netStatus('10人協力アリーナに接続しています…');setupConnection(createRelayConnection(ws),'guest',onlineMode,roomPlayerId,data.players||[]);return}
  if(data.type==='room-player-joined'){if(conn&&conn.socket===ws){conn.emit('data',{type:'roster',players:data.players||[]});netStatus('オンライン参加者 '+(data.players||[]).length+' / 10 人');return}onlineMode=data.gameMode||onlineMode;netStatus('参加者が接続しました。10人アリーナを開始します…');setupConnection(createRelayConnection(ws),'host',onlineMode,roomPlayerId,data.players||[]);return}
  if(data.type==='room-player-left'){netStatus('参加者が退出しました');if(conn&&conn.socket===ws)conn.emit('data',{type:'player-left',playerId:data.playerId});return}
+ if(data.type==='room-closed'){netStatus('ホストが退出したためルームが閉じられました');if(conn&&conn.socket===ws){conn.emit('close');conn=null}return}
  if(data.type==='room-error'){netStatus(data.message||'ルーム操作に失敗しました');$('#hostBtn').disabled=false;$('#autoMatchBtn').disabled=false;$('#cancelMatchBtn').disabled=true;return}
  if(data.type==='queued'){netStatus('対戦相手を検索中… 参加者が見つかるまでこの画面で待機します');return}
  if(data.type==='matched'){onlineMode=data.gameMode||onlineMode;roomPlayerId=data.playerId||'';netStatus('参加者が見つかりました！通信を確立しています…');setupConnection(createRelayConnection(ws),data.role,onlineMode,roomPlayerId,[]);return}
