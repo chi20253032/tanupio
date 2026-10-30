@@ -28,12 +28,18 @@ function removeRoom(socket) {
   const room = rooms.get(socket.roomCode);
   if (room && room.host === socket) {
     rooms.delete(socket.roomCode);
-    if (room.guest) send(room.guest, { type: 'room-error', message: 'ホストがルームを退出しました' });
+    if (room.guest) {
+      room.guest.roomCode = null;
+      room.guest.opponent = null;
+      send(room.guest, { type: 'opponent-left' });
+    }
   } else if (room && room.guest === socket) {
     room.guest = null;
-    send(room.host, { type: 'room-player-left' });
+    room.host.opponent = null;
+    send(room.host, { type: 'opponent-left' });
   }
   socket.roomCode = null;
+  socket.opponent = null;
 }
 
 function send(socket, value) {
@@ -86,7 +92,7 @@ wss.on('connection', (socket, req) => {
         send(socket.opponent, { type: 'game-data', data: msg.data });
       }
     } else if (msg.type === 'join') {
-      if (socket.peerId || socket.room || socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'error', message: 'Already queued or in a match' }); return; }
+      if (socket.roomCode || socket.quickMatch || socket.opponent) { send(socket, { type: 'error', message: 'Already queued or in a match' }); return; }
       if (!queued.has(socket)) { waiting.push(socket); queued.add(socket); }
       send(socket, { type: 'queued', position: waiting.length });
       pairPlayers();
@@ -103,7 +109,7 @@ wss.on('connection', (socket, req) => {
         opponent.quickMatch = null;
         opponent.roomCode = null;
       }
-      socket.opponent = null; socket.room = null; socket.quickMatch = null;
+      socket.opponent = null; socket.quickMatch = null;
     }
   });
   socket.on('close', () => {
