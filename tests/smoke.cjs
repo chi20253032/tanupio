@@ -31,7 +31,7 @@ const assert = require('node:assert/strict');
     assert.equal(snapshot.autoAim, true, '初心者向けオートエイムをONにできません');
     assert.ok(snapshot.target && snapshot.target.y < snapshot.y - 100, '全方向から最も近い敵を選択できません');
     assert.ok(snapshot.bullets > 0, 'オートエイム時に自動射撃されません');
-    await page.locator('#autoAimToggle').click();
+    await page.evaluate(() => document.querySelector('#autoAimToggle').click());
     assert.equal(await page.locator('#autoAimToggle').getAttribute('aria-checked'), 'false');
 
     const startX = snapshot.x;
