@@ -123,10 +123,12 @@ function roomSocket(){
 }
 let roomResolve=null,roomReject=null,roomPeerId='',roomListTimer=null;
 function handleRoomMessage(data,ws){
+ if(data.type==='game-data'){if(conn&&conn.socket===ws)conn.emit('data',data.data);return}
  if(data.type==='room-list'){renderRooms(data.rooms||[]);return}
  if(data.type==='room-created'){netStatus('ルームを作成しました！ 招待コード： '+data.code+' ／ 相手の参加を待っています');$('#peerCode').value=data.code;return}
- if(data.type==='room-joined'){if(!peer){netStatus('接続準備に失敗しました');return}netStatus('ルームに接続中…');setupConnection(peer.connect(data.hostPeerId,{reliable:true}),'guest');return}
- if(data.type==='room-player-joined'){if(peer&&data.guestPeerId){netStatus('参加者が見つかりました。接続しています…');}return}
+ if(data.type==='room-joined'){netStatus('サーバー中継で対戦を開始します…');setupConnection(createRelayConnection(ws),'guest');return}
+ if(data.type==='room-player-joined'){netStatus('参加者が見つかりました。接続しています…');setupConnection(createRelayConnection(ws),'host');return}
+ if(data.type==='room-player-left'){netStatus('相手が退出しました');if(conn&&conn.socket===ws){conn.emit('close');conn=null}return}
  if(data.type==='room-error'){netStatus(data.message||'ルーム操作に失敗しました');if(roomReject){roomReject(new Error(data.message||'room error'));roomReject=null}return}
  if(data.type==='queued'){netStatus('対戦相手を検索中… 待機順 '+data.position);return}
  if(data.type==='matched'){netRole=data.role;netStatus('相手が見つかりました！ゲーム接続中…');if(data.role==='host'){const c=peer.connect(data.peerId,{reliable:true});c.on('open',()=>setupConnection(c,'host'));c.on('error',()=>{netStatus('対戦相手との接続に失敗しました。もう一度検索してください');stopMatchmaking()})}else netStatus('相手の接続を待っています…');return}
@@ -143,17 +145,17 @@ async function refreshRooms(){
  catch(e){$('#roomList').innerHTML='<p class="muted">ルーム一覧を取得できません。サーバーに接続できるか確認してください。</p>'}
 }
 async function createRoom(){
- if(!window.Peer||!window.WebSocket){netStatus('オンライン機能を読み込めません');return}
+ if(!window.WebSocket){netStatus('オンライン機能を読み込めません');return}
  disconnect();$('#hostBtn').disabled=true;netStatus('ルームを準備しています…');
- try{peer=new Peer();peer.on('connection',c=>setupConnection(c,'host'));peer.on('error',e=>netStatus('PeerJSエラー：'+e.type));peer.on('open',async id=>{roomPeerId=id;try{const ws=await roomSocket();ws.send(JSON.stringify({type:'create-room',peerId:id,name:'NEON ARENA ROOM'}))}catch(e){netStatus(e.message);$('#hostBtn').disabled=false}})}
+ try{const ws=await roomSocket();ws.send(JSON.stringify({type:'create-room',name:'NEON ARENA ROOM'}))}
  catch(e){netStatus('ルームを作成できませんでした：'+e.message);$('#hostBtn').disabled=false}
 }
 async function joinRoom(code){
  const normalized=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
  if(normalized.length!==6){netStatus('招待コードは6文字で入力してください');return}
- if(!window.Peer){netStatus('PeerJSを読み込めません');return}
+ if(!window.WebSocket){netStatus('オンライン機能を読み込めません');return}
  disconnect();netStatus('ルームを検索しています…');
- try{peer=new Peer();peer.on('error',e=>netStatus('PeerJSエラー：'+e.type));peer.on('open',async()=>{try{const ws=await roomSocket();ws.send(JSON.stringify({type:'join-room',code:normalized,peerId:peer.id}))}catch(e){netStatus(e.message)}})}
+ try{const ws=await roomSocket();ws.send(JSON.stringify({type:'join-room',code:normalized}))}
  catch(e){netStatus('参加できませんでした：'+e.message)}
 }
 $('#hostBtn').onclick=createRoom;
@@ -176,7 +178,14 @@ $('#cancelMatchBtn').onclick=()=>{stopMatchmaking();disconnect();netStatus('検�
 function cleanAxis(v){let n=Number(v);return Number.isFinite(n)?Math.max(-1,Math.min(1,n)):0}
 function cleanInput(d){return{x:cleanAxis(d?.x),y:cleanAxis(d?.y),ax:cleanAxis(d?.ax),ay:cleanAxis(d?.ay),fire:d?.fire===true,skill:d?.skill===true}}
 function disconnect(){stopMatchmaking();try{if(conn)conn.close();if(peer)peer.destroy()}catch{}conn=null;peer=null;remote=null;netRole=''}
-function setupConnection(c,role){conn=c;netRole=role;c.on('open',()=>{if(matchSocket){$('#autoMatchBtn').disabled=true;$('#cancelMatchBtn').disabled=true}netStatus('接続成功！対戦を開始します。');$('#hostBtn').disabled=false;$('#autoMatchBtn').disabled=true;$('#cancelMatchBtn').disabled=true;reset('online',false);if(role==='host')remote={x:W*.72,y:H*.5,r:13,hp:100,damage:24};else{player.x=W*.72;remote={x:W*.5,y:H*.5,r:13,hp:100}}toast('ONLINE CONNECTED')});c.on('data',data=>{if(!data||typeof data!=='object')return;if(data.type==='state'&&role==='guest'){remote={x:data.x*W,y:data.y*H,r:13,hp:data.hp};if(player)player.hp=data.rhp;remoteBullets=(data.remoteBullets||[]).map(b=>({x:b.x*W,y:b.y*H}));hostBullets=(data.bullets||[]).map(b=>({x:b.x*W,y:b.y*H}));if(data.hp<=0){toast('HOST DOWN');state='over';$('#overTitle').innerHTML='YOU <span>WIN!</span>';$('#result').textContent='相手のHPが0になりました';$('#over').classList.remove('hidden')}else if(data.rhp<=0){state='over';$('#overTitle').innerHTML='YOU <span>LOSE</span>';$('#result').textContent='HPが0になりました';$('#over').classList.remove('hidden')}}if(data.type==='input'&&role==='host'){remoteInput=cleanInput(data)}});c.on('close',()=>{netStatus('接続が切断されました');remote=null;if(matchSocket){try{matchSocket.close()}catch{}matchSocket=null}$('#autoMatchBtn').disabled=false;$('#cancelMatchBtn').disabled=true;toast('DISCONNECTED')});c.on('error',e=>netStatus('通信エラー: '+e.type))}
+function createRelayConnection(ws){
+ const listeners={};
+ const c={socket:ws,get open(){return ws.readyState===WebSocket.OPEN},send(value){if(this.open)ws.send(JSON.stringify({type:'game-data',data:value}))},close(){try{ws.close()}catch{}},on(event,fn){(listeners[event]||(listeners[event]=[])).push(fn);if(event==='open'&&this.open)queueMicrotask(fn);return this},emit(event,value){for(const fn of listeners[event]||[])fn(value)}};
+ ws.addEventListener('close',()=>c.emit('close'));
+ ws.addEventListener('error',e=>c.emit('error',e));
+ return c;
+}
+function setupConnection(c,role){if(conn&&conn!==c)try{conn.close()}catch{}conn=c;netRole=role;c.on('open',()=>{if(matchSocket){$('#autoMatchBtn').disabled=true;$('#cancelMatchBtn').disabled=true}netStatus('接続成功！対戦を開始します。');$('#hostBtn').disabled=false;$('#autoMatchBtn').disabled=true;$('#cancelMatchBtn').disabled=true;reset('online',false);if(role==='host')remote={x:W*.72,y:H*.5,r:13,hp:100,damage:24};else{player.x=W*.72;remote={x:W*.5,y:H*.5,r:13,hp:100}}toast('ONLINE CONNECTED')});c.on('data',data=>{if(!data||typeof data!=='object')return;if(data.type==='state'&&role==='guest'){remote={x:data.x*W,y:data.y*H,r:13,hp:data.hp};if(player)player.hp=data.rhp;remoteBullets=(data.remoteBullets||[]).map(b=>({x:b.x*W,y:b.y*H}));hostBullets=(data.bullets||[]).map(b=>({x:b.x*W,y:b.y*H}));if(data.hp<=0){toast('HOST DOWN');state='over';$('#overTitle').innerHTML='YOU <span>WIN!</span>';$('#result').textContent='相手のHPが0になりました';$('#over').classList.remove('hidden')}else if(data.rhp<=0){state='over';$('#overTitle').innerHTML='YOU <span>LOSE</span>';$('#result').textContent='HPが0になりました';$('#over').classList.remove('hidden')}}if(data.type==='input'&&role==='host'){remoteInput=cleanInput(data)}});c.on('close',()=>{netStatus('接続が切断されました');remote=null;if(matchSocket){try{matchSocket.close()}catch{}matchSocket=null}$('#autoMatchBtn').disabled=false;$('#cancelMatchBtn').disabled=true;toast('DISCONNECTED')});c.on('error',e=>netStatus('通信エラー: '+e.type))}
 // Legacy PeerJS-ID handlers removed: room-code handlers above are authoritative.
 if(new URLSearchParams(location.search).has('test'))window.__NEON_TEST__={snapshot:()=>({state,mode,ai,autoAim,bosses:enemies.filter(e=>e.boss).length,bossSpawned,bossDefeated,x:player?.x,y:player?.y,hp:player?.hp,enemies:enemies.length,bullets:bullets.length,remoteBullets:remoteBullets.length,level,score,kills,storyStage,netRole,aim:{x:localInput.ax,y:localInput.ay},target:autoAimTarget?{x:autoAimTarget.x,y:autoAimTarget.y}:null,bulletDirection:bullets.length?{x:bullets[bullets.length-1].vx,y:bullets[bullets.length-1].vy}:null,xp,orbCount:orbs.length,orbAbsorbing:orbs.some(o=>o.absorbing),remote:remote?{x:remote.x,y:remote.y,hp:remote.hp}:null}),setAutoAim:v=>{autoAim=!!v;syncAutoAimButton()},setFacing:(x,y)=>{const l=Math.hypot(x,y)||1;mouse.x=player.x+x/l*300;mouse.y=player.y+y/l*300;aim.active=false},setFire:v=>{keys.Space=!!v;if(v)fireCd=0},clearEnemies:()=>{enemies=[];autoAimTarget=null},setStageKills:v=>{stageKills=Math.max(0,Number(v)||0)},spawnEnemy,defeatEnemyAt:i=>{const e=enemies[i];return e?defeatEnemy(e,i):false},addEnemy:(x,y,boss=false)=>enemies.push({x,y,r:boss?29:12,hp:boss?520:100,max:boss?520:100,speed:0,type:boss?'boss':'drone',boss}),addOrb:(x,y)=>orbs.push({x,y,r:5,life:12,age:0,absorbing:false,absorbT:0,startX:x,startY:y}),step:dt=>update(dt),forceLevelUp:()=>{xp=nextXp;levelUp()},forceStageClear:()=>stageClear()};
 reset('survival');state='menu';$('#hud').style.display='none';$('#menu').classList.remove('hidden');requestAnimationFrame(draw);
