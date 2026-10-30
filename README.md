@@ -22,3 +22,7 @@ npm install
 npx playwright install --with-deps chromium
 npm test
 ```
+
+## 1.0 Beta candidate
+
+The `main` branch is the 1.0 beta candidate. The browser build is a single-page game; the optional matchmaking service is deployed separately on Render. Run `npm test` before publishing a release. This beta still depends on the public PeerJS signaling service and the configured Render matchmaking service for online play.

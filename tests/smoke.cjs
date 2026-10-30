@@ -31,6 +31,27 @@ const assert = require('node:assert/strict');
     assert.equal(snapshot.autoAim, true, '初心者向けオートエイムをONにできません');
     assert.ok(snapshot.target && snapshot.target.x > snapshot.x + 100, '前方の敵をターゲットできません');
     assert.equal(snapshot.bullets, 0, 'オートエイムが自動射撃しています');
+
+    // Aim assist must work in every direction and redirect only manually fired shots.
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
+      await page.evaluate(([x,y]) => {
+        const t=window.__NEON_TEST__,s=t.snapshot();t.clearEnemies();
+        const l=Math.hypot(x,y),ux=x/l,uy=y/l;
+        t.addEnemy(s.x+ux*210,s.y+uy*210);
+        t.addEnemy(s.x-uy*55,s.y+ux*55);
+        t.setFacing(x,y);t.step(.02);
+      }, [dx,dy]);
+      snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
+      const expectedX=snapshot.x+dx/Math.hypot(dx,dy)*210;
+      const expectedY=snapshot.y+dy/Math.hypot(dx,dy)*210;
+      assert.ok(snapshot.target && Math.hypot(snapshot.target.x-expectedX,snapshot.target.y-expectedY)<2, '照準方向 '+dx+','+dy+' のターゲット選択に失敗');
+      await page.evaluate(()=>{const t=window.__NEON_TEST__;t.setFire(true);t.step(.02);t.setFire(false)});
+      snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
+      const shot=Math.hypot(snapshot.bulletDirection?.x||0,snapshot.bulletDirection?.y||0)||1;
+      const dot=(snapshot.bulletDirection.x*dx+snapshot.bulletDirection.y*dy)/(shot*Math.hypot(dx,dy));
+      assert.ok(dot>.995, '射撃方向がターゲットに補正されません');
+    }
+    await page.evaluate(()=>window.__NEON_TEST__.clearEnemies());
     await page.evaluate(() => { const t = window.__NEON_TEST__; t.addOrb(t.snapshot().x + 35, t.snapshot().y); t.step(0.04); });
     snapshot = await page.evaluate(() => window.__NEON_TEST__.snapshot());
     assert.equal(snapshot.orbAbsorbing, true, '経験値オーブの吸収アニメーションが開始しません');
@@ -63,6 +84,11 @@ const assert = require('node:assert/strict');
     await page.locator('#story').click();
     assert.equal(await page.locator('#modeName').textContent(), 'STORY');
     assert.equal(await page.evaluate(() => window.__NEON_TEST__.snapshot().mode), 'story');
+    await page.evaluate(()=>{const t=window.__NEON_TEST__;t.setStageKills(24);t.addEnemy(100,100,true);t.defeatEnemyAt(0)});
+    await page.locator('#upgrade').waitFor({state:'visible'});
+    assert.match(await page.locator('#choices').textContent(),/STAGE 1 CLEAR/,'最後のボス撃破でステージクリアになりません');
+    await page.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#story').click();
     for (let stage = 1; stage <= 5; stage++) {
       await page.evaluate(() => window.__NEON_TEST__.forceStageClear());
       await page.locator('#choices button').click();
