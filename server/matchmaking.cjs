@@ -48,15 +48,23 @@ function removeFromQueue(socket) {
 }
 function removeRoom(socket) {
   if (!socket.roomCode) return;
-  const room = rooms.get(socket.roomCode);
+  const code = socket.roomCode;
+  const room = rooms.get(code);
   if (room) {
-    room.players = room.players.filter(member => member !== socket);
-    for (const member of room.players) {
-      member.roomCode = socket.roomCode;
-      send(member, { type: 'room-player-left', playerId: socket.playerId });
+    if (room.host === socket) {
+      rooms.delete(code);
+      for (const member of room.players) {
+        if (member !== socket) {
+          member.roomCode = null;
+          send(member, { type: 'room-closed', reason: 'host-left' });
+        }
+      }
+    } else {
+      room.players = room.players.filter(member => member !== socket);
+      for (const member of room.players) send(member, { type: 'room-player-left', playerId: socket.playerId });
+      if (!room.players.length) rooms.delete(code);
+      else publishRoster(room);
     }
-    if (!room.players.length) rooms.delete(socket.roomCode);
-    else { if (room.host === socket) room.host = room.players[0]; publishRoster(room); }
   }
   socket.roomCode = null;
   socket.opponent = null;
