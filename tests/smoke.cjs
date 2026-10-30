@@ -154,7 +154,7 @@ const assert = require('node:assert/strict');
     await guest.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
     await guest.locator('#online').click();
     await guest.locator('#showJoinBtn').click();
-    await guest.locator('#peerCode').fill(invite);
+    await guest.locator('#inviteCode').fill(invite);
     await guest.locator('#joinBtn').click();
     await host.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), null, { timeout: 45000 });
     await guest.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), null, { timeout: 45000 });
