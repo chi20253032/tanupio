@@ -31,11 +31,24 @@ const assert = require('node:assert/strict');
     await page.keyboard.up('Space');
     snapshot = await page.evaluate(() => window.__NEON_TEST__.snapshot());
     assert.ok(snapshot.bullets > 0, '射撃で弾が生成されません');
+    await page.evaluate(() => window.__NEON_TEST__.forceLevelUp());
+    await page.locator('#upgrade').waitFor({ state: 'visible' });
+    await page.locator('#choices button').first().click();
+    snapshot = await page.evaluate(() => window.__NEON_TEST__.snapshot());
+    assert.equal(snapshot.level, 2, 'レベルアップが反映されません');
 
     await page.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
     await page.locator('#story').click();
     assert.equal(await page.locator('#modeName').textContent(), 'STORY');
     assert.equal(await page.evaluate(() => window.__NEON_TEST__.snapshot().mode), 'story');
+    for (let stage = 1; stage <= 5; stage++) {
+      await page.evaluate(() => window.__NEON_TEST__.forceStageClear());
+      await page.locator('#choices button').click();
+      if (stage < 5) {
+        assert.equal(await page.evaluate(() => window.__NEON_TEST__.snapshot().storyStage), stage + 1);
+      }
+    }
+    assert.match(await page.locator('#overTitle').textContent(), /STORY CLEAR/);
 
     await page.reload({ waitUntil: 'networkidle' });
     await page.locator('#demo').click();
@@ -50,7 +63,22 @@ const assert = require('node:assert/strict');
     assert.ok(await mobile.locator('#movePad').isVisible());
     assert.ok(await mobile.locator('#aimPad').isVisible());
     assert.ok(await mobile.locator('#skillBtn').isVisible());
-    await mobile.waitForTimeout(500);
+    const moveBox = await mobile.locator('#movePad').boundingBox();
+    const mobileStartX = await mobile.evaluate(() => window.__NEON_TEST__.snapshot().x);
+    await mobile.mouse.move(moveBox.x + moveBox.width / 2, moveBox.y + moveBox.height / 2);
+    await mobile.mouse.down();
+    await mobile.mouse.move(moveBox.x + moveBox.width / 2 + 36, moveBox.y + moveBox.height / 2, { steps: 5 });
+    await mobile.waitForTimeout(250);
+    await mobile.mouse.up();
+    const mobileMovedX = await mobile.evaluate(() => window.__NEON_TEST__.snapshot().x);
+    assert.ok(mobileMovedX > mobileStartX + 5, 'スマホ用移動スティックが動作しません');
+    const aimBox = await mobile.locator('#aimPad').boundingBox();
+    await mobile.mouse.move(aimBox.x + aimBox.width / 2, aimBox.y + aimBox.height / 2);
+    await mobile.mouse.down();
+    await mobile.mouse.move(aimBox.x + aimBox.width / 2 - 36, aimBox.y + aimBox.height / 2, { steps: 5 });
+    await mobile.waitForTimeout(250);
+    await mobile.mouse.up();
+    assert.ok((await mobile.evaluate(() => window.__NEON_TEST__.snapshot().bullets)) > 0, 'スマホ照準スティックから射撃できません');
     await mobile.close();
 
     const host = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -60,18 +88,18 @@ const assert = require('node:assert/strict');
     host.on('pageerror', error => errors.push('host: ' + error.message));
     guest.on('pageerror', error => errors.push('guest: ' + error.message));
     await host.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
-    await host.waitForFunction(() => !!window.Peer, { timeout: 30000 });
+    await host.waitForFunction(() => !!window.Peer, null, { timeout: 30000 });
     await host.locator('#online').click();
     await host.locator('#hostBtn').click();
     await host.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('招待コード:'));
     const invite = (await host.locator('#netStatus').textContent()).match(/招待コード:\\s*(.+?)\\s*（/)[1];
     await guest.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
-    await guest.waitForFunction(() => !!window.Peer, { timeout: 30000 });
+    await guest.waitForFunction(() => !!window.Peer, null, { timeout: 30000 });
     await guest.locator('#online').click();
     await guest.locator('#peerCode').fill(invite);
     await guest.locator('#joinBtn').click();
-    await host.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), { timeout: 45000 });
-    await guest.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), { timeout: 45000 });
+    await host.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), null, { timeout: 45000 });
+    await guest.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), null, { timeout: 45000 });
     assert.equal(await host.evaluate(() => window.__NEON_TEST__.snapshot().netRole), 'host');
     assert.equal(await guest.evaluate(() => window.__NEON_TEST__.snapshot().netRole), 'guest');
     const before = await host.evaluate(() => window.__NEON_TEST__.snapshot().remote.x);
@@ -83,12 +111,12 @@ const assert = require('node:assert/strict');
     await guest.keyboard.down('Space');
     await guest.waitForTimeout(1300);
     await guest.keyboard.up('Space');
-    await host.waitForFunction(() => window.__NEON_TEST__.snapshot().hp < 100, { timeout: 10000 });
+    await host.waitForFunction(() => window.__NEON_TEST__.snapshot().hp < 100, null, { timeout: 10000 });
     await host.mouse.move(1000, 400);
     await host.keyboard.down('Space');
     await host.waitForTimeout(1300);
     await host.keyboard.up('Space');
-    await guest.waitForFunction(() => window.__NEON_TEST__.snapshot().hp < 100, { timeout: 10000 });
+    await guest.waitForFunction(() => window.__NEON_TEST__.snapshot().hp < 100, null, { timeout: 10000 });
     await host.close();
     await guest.close();
 
