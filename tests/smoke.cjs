@@ -356,7 +356,7 @@ const assert = require('node:assert/strict');
     await coopGuest.evaluate(() => window.__NEON_TEST__.setFire(false));
     await coopGuest.locator('#quitGame').click();
     await coopGuest.locator('#menu').waitFor({ state: 'visible' });
-    await coopHost.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('退出'), null, { timeout: 10000 });
+    await coopHost.waitForFunction(() => window.__NEON_TEST__.snapshot().onlinePlayers === 1, null, { timeout: 10000 });
     await coopHost.close(); await coopGuest.close();
 
     assert.deepEqual(errors, [], 'ブラウザ実行時エラーが発生しました');
