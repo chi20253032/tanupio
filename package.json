@@ -1,6 +1,6 @@
 {
   "name": "tanupio-neon-arena",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "start": "node server/matchmaking.cjs",
@@ -12,7 +12,7 @@
   "devDependencies": {
     "playwright": "1.56.1"
   },
-  "description": "TANUPIO NEON ARENA — cross-platform neon action game with WebSocket multiplayer",
+  "description": "TANUPIO NEON ARENA 1.1.0 — Halloween Raid, improved autonomous AI and WebSocket multiplayer",
   "engines": {
     "node": ">=20"
   }
