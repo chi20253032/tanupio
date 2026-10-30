@@ -15,10 +15,11 @@ const WebSocket = require('ws');
     ws.once('open', () => resolve(ws));
     ws.once('error', reject);
   });
-  const next = ws => new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timed out waiting for matchmaking message')), 5000);
+  let nextCall = 0;
+  const next = ws => { const call = ++nextCall; return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timed out waiting for matchmaking message #' + call)), 5000);
     ws.once('message', data => { clearTimeout(timer); resolve(JSON.parse(data.toString())); });
-  });
+  }); };
   try {
     let health;
     for (let i = 0; i < 40; i++) {
