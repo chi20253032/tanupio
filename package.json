@@ -1,9 +1,13 @@
 {
   "name": "tanupio-neon-arena",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
-    "test": "node tests/smoke.cjs"
+    "start": "node server/matchmaking.cjs",
+    "test": "node tests/server-smoke.cjs && node tests/smoke.cjs"
+  },
+  "dependencies": {
+    "ws": "8.18.3"
   },
   "devDependencies": {
     "playwright": "1.56.1"
