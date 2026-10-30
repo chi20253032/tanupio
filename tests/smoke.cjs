@@ -53,6 +53,38 @@ const assert = require('node:assert/strict');
     await mobile.waitForTimeout(500);
     await mobile.close();
 
+    const host = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const guest = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    host.setDefaultTimeout(30000);
+    guest.setDefaultTimeout(30000);
+    host.on('pageerror', error => errors.push('host: ' + error.message));
+    guest.on('pageerror', error => errors.push('guest: ' + error.message));
+    await host.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
+    await host.locator('#online').click();
+    await host.locator('#hostBtn').click();
+    await host.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('招待コード:'));
+    const invite = (await host.locator('#netStatus').textContent()).match(/招待コード:\\s*(.+?)\\s*（/)[1];
+    await guest.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
+    await guest.locator('#online').click();
+    await guest.locator('#peerCode').fill(invite);
+    await guest.locator('#joinBtn').click();
+    await host.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), { timeout: 45000 });
+    await guest.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), { timeout: 45000 });
+    assert.equal(await host.evaluate(() => window.__NEON_TEST__.snapshot().netRole), 'host');
+    assert.equal(await guest.evaluate(() => window.__NEON_TEST__.snapshot().netRole), 'guest');
+    const before = await host.evaluate(() => window.__NEON_TEST__.snapshot().remote.x);
+    await guest.keyboard.down('ArrowLeft');
+    await guest.waitForTimeout(700);
+    await guest.keyboard.up('ArrowLeft');
+    await host.waitForFunction(v => window.__NEON_TEST__.snapshot().remote.x < v - 10, before);
+    await guest.mouse.move(640, 400);
+    await guest.keyboard.down('Space');
+    await guest.waitForTimeout(1300);
+    await guest.keyboard.up('Space');
+    await host.waitForFunction(() => window.__NEON_TEST__.snapshot().hp < 100, { timeout: 10000 });
+    await host.close();
+    await guest.close();
+
     assert.deepEqual(errors, [], 'ブラウザ実行時エラーが発生しました');
     process.stdout.write('PASS: desktop survival/story/AI smoke tests and mobile HUD/touch controls\n');
   } finally {
