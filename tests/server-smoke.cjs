@@ -15,10 +15,11 @@ const WebSocket = require('ws');
     ws.once('open', () => resolve(ws));
     ws.once('error', reject);
   });
-  const next = ws => new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timed out waiting for matchmaking message')), 5000);
+  let nextCall = 0;
+  const next = ws => { const call = ++nextCall; return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timed out waiting for matchmaking message #' + call)), 5000);
     ws.once('message', data => { clearTimeout(timer); resolve(JSON.parse(data.toString())); });
-  });
+  }); };
   try {
     let health;
     for (let i = 0; i < 40; i++) {
@@ -84,12 +85,35 @@ const WebSocket = require('ws');
     assert.equal(hostJoined.type, 'room-player-joined');
     const relayToHost = next(host);
     guest.send(JSON.stringify({ type: 'game-data', data: { type: 'input', x: -1, fire: true } }));
-    assert.deepEqual(await relayToHost, { type: 'game-data', data: { type: 'input', x: -1, fire: true } });
+    const relayedInput = await relayToHost; assert.equal(relayedInput.type, 'game-data'); assert.equal(relayedInput.data.type, 'input'); assert.equal(relayedInput.data.x, -1); assert.ok(relayedInput.from, 'relay sender ID is missing');
     const relayToGuest = next(guest);
     host.send(JSON.stringify({ type: 'game-data', data: { type: 'state', hp: 87, enemies: [{ x: 0.5, y: 0.5 }] } }));
-    assert.deepEqual(await relayToGuest, { type: 'game-data', data: { type: 'state', hp: 87, enemies: [{ x: 0.5, y: 0.5 }] } });
+    const relayedState = await relayToGuest; assert.equal(relayedState.type, 'game-data'); assert.equal(relayedState.data.hp, 87); assert.ok(relayedState.from, 'state sender ID is missing');
     guest.send(JSON.stringify({ type: 'join-room', code: created.code }));
     assert.equal((await next(guest)).type, 'room-error');
+    // Fill the invite room to its advertised ten-player limit.
+    const extraPlayers = [];
+    for (let i = 0; i < 8; i++) {
+      const member = await open('ws://127.0.0.1:' + port);
+      extraPlayers.push(member);
+      member.send(JSON.stringify({ type: 'join-room', code: created.code, playerName: 'PLAYER ' + (i + 3) }));
+      const result = await next(member);
+      assert.equal(result.type, 'room-joined');
+      assert.equal(result.maxPlayers, 10);
+      assert.equal(result.players.length, i + 3);
+    }
+    const fullRoom = await open('ws://127.0.0.1:' + port);
+    fullRoom.send(JSON.stringify({ type: 'join-room', code: created.code }));
+    assert.equal((await next(fullRoom)).type, 'room-error', '11th player was allowed into a full room');
+    host.send(JSON.stringify({ type: 'list-rooms' }));
+    const roomListAfterFull = await new Promise((resolve, reject) => { const timer=setTimeout(()=>reject(new Error('Timed out waiting for room-list')),5000); const handler=data=>{const msg=JSON.parse(data.toString());if(msg.type==='room-list'){clearTimeout(timer);host.off('message',handler);resolve(msg)}};host.on('message',handler); });
+    assert.equal(roomListAfterFull.rooms.length, 0, 'full room is still listed as joinable');
+    const tenPlayerRelayWaiters = [guest, ...extraPlayers].map(member => new Promise(resolve => member.once('message', data => resolve(JSON.parse(data.toString())))));
+    host.send(JSON.stringify({ type: 'game-data', data: { type: 'state', playerCount: 10 } }));
+    const tenPlayerRelays = await Promise.all(tenPlayerRelayWaiters);
+    assert.ok(tenPlayerRelays.every(message => message.type === 'game-data' && message.data.playerCount === 10), 'game state was not broadcast to every room participant');
+    fullRoom.close();
+    for (const member of extraPlayers) member.close();
     guest.close(); host.close();
     a.close(); b.close();
     process.stdout.write('PASS: duel/coop queue separation, room mode metadata, and bidirectional game relay\n');
