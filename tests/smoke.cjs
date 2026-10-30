@@ -58,7 +58,7 @@ const assert = require('node:assert/strict');
     await page.locator('#aiVersus').click();
     snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot());
     assert.equal(snapshot.mode,'ai-versus','AI対決が開始しません');
-    assert.ok(snapshot.enemyTypes.includes('ai-rival'),'AIライバルが生成されません');
+    assert.ok(snapshot.enemyTypes.includes('ai-rival'),'AIライバルが生成されません'); await page.evaluate(()=>window.__NEON_TEST__.step(.8)); snapshot=await page.evaluate(()=>window.__NEON_TEST__.snapshot()); assert.ok(snapshot.enemyBulletCount>0,'AI rival did not fire');
     await page.evaluate(()=>{const t=window.__NEON_TEST__;t.clearEnemies();t.setFire(true);t.step(.03);t.setFire(false)});
     assert.ok((await page.evaluate(()=>window.__NEON_TEST__.snapshot())).bullets>0,'空の戦場で射撃弾が残りません');
 
