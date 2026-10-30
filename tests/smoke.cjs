@@ -240,8 +240,50 @@ const assert = require('node:assert/strict');
     await quickGuest.waitForTimeout(1200);
     await quickGuest.keyboard.up('Space');
     await quickHost.waitForFunction(() => window.__NEON_TEST__.snapshot().hp < 100, null, { timeout: 5000 });
+    // A rematch must reuse the already-open relay without reconnecting.
+    await quickGuest.evaluate(() => window.__NEON_TEST__.forceGameOver());
+    await quickGuest.locator('#retry').click();
+    await quickGuest.waitForFunction(() => window.__NEON_TEST__.snapshot().state === 'play');
+    await quickHost.waitForFunction(() => window.__NEON_TEST__.snapshot().state === 'play');
+    assert.equal(await quickGuest.evaluate(() => window.__NEON_TEST__.snapshot().netRole), 'guest');
+    assert.equal(await quickHost.evaluate(() => window.__NEON_TEST__.snapshot().netRole), 'host');
     await quickHost.close();
     await quickGuest.close();
+
+    // Co-op rooms share a host-authoritative enemy field and accept teammate shots.
+    const coopHost = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const coopGuest = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    coopHost.setDefaultTimeout(30000); coopGuest.setDefaultTimeout(30000);
+    coopHost.on('pageerror', error => errors.push('coop-host: ' + error.message));
+    coopGuest.on('pageerror', error => errors.push('coop-guest: ' + error.message));
+    await coopHost.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
+    await coopGuest.goto('http://127.0.0.1:4173/?test=1', { waitUntil: 'domcontentloaded' });
+    await coopHost.locator('#online').click();
+    await coopHost.locator('#onlineModeSelect').selectOption('coop');
+    await coopHost.locator('#showJoinBtn').click();
+    await coopHost.locator('#hostBtn').click();
+    await coopHost.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('招待コード：'));
+    const coopInvite = (await coopHost.locator('#netStatus').textContent()).split('招待コード：')[1]?.trim().split(/\\s/)[0];
+    assert.ok(coopInvite, '協力ルームの招待コードがありません');
+    await coopGuest.locator('#online').click();
+    await coopGuest.locator('#onlineModeSelect').selectOption('duel'); // Room host setting is authoritative.
+    await coopGuest.locator('#showJoinBtn').click();
+    await coopGuest.locator('#inviteCode').fill(coopInvite);
+    await coopGuest.locator('#joinBtn').click();
+    await coopHost.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), null, { timeout: 45000 });
+    await coopGuest.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('接続成功'), null, { timeout: 45000 });
+    assert.equal(await coopHost.evaluate(() => window.__NEON_TEST__.snapshot().onlineMode), 'coop');
+    assert.equal(await coopGuest.evaluate(() => window.__NEON_TEST__.snapshot().onlineMode), 'coop');
+    await coopHost.waitForFunction(() => window.__NEON_TEST__.snapshot().enemies > 0, null, { timeout: 10000 });
+    await coopGuest.waitForFunction(() => window.__NEON_TEST__.snapshot().enemies > 0, null, { timeout: 10000 });
+    await coopHost.evaluate(() => { const t=window.__NEON_TEST__,p=t.snapshot();t.clearEnemies();t.addEnemy(p.x+250,p.y); });
+    await coopGuest.evaluate(() => { window.__NEON_TEST__.setFacing(1,0);window.__NEON_TEST__.setFire(true); });
+    await coopHost.waitForFunction(() => window.__NEON_TEST__.snapshot().score > 0, null, { timeout: 10000 });
+    await coopGuest.evaluate(() => window.__NEON_TEST__.setFire(false));
+    await coopGuest.locator('#quitGame').click();
+    await coopGuest.locator('#menu').waitFor({ state: 'visible' });
+    await coopHost.waitForFunction(() => document.querySelector('#netStatus').textContent.includes('切断'), null, { timeout: 10000 });
+    await coopHost.close(); await coopGuest.close();
 
     assert.deepEqual(errors, [], 'ブラウザ実行時エラーが発生しました');
     process.stdout.write('PASS: desktop survival/story/AI, mobile touch controls, invite rooms, and quick-match online relay\n');
