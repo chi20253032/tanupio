@@ -122,7 +122,7 @@ function aiNavigate(unit,target,dt,role='hunter',hazards=[]){
  const strafe=Math.sin(elapsed*(role==='rival'?4.8:2.6)+(unit.x+unit.y)*.001);
  let x=nx*radial-ny*strafe*.85,y=ny*radial+nx*strafe*.85;
  for(const q of hazards){const hx=q.x-unit.x,hy=q.y-unit.y,hd=Math.hypot(hx,hy)||1;if(hd<190){const k=(190-hd)/190;x-=hx/hd*k*2.2;y-=hy/hd*k*2.2;}}
- for(const q of targets){if(q===t.e)continue;const hx=q.x-unit.x,hy=q.y-unit.y,hd=Math.hypot(hx,hy)||1;if(hd<105){const k=(105-hd)/105;x-=hx/hd*k*1.1;y-=hy/hd*k*1.1;}}
+ for(const q of enemies){if(q===t.e||q===unit)continue;const hx=q.x-unit.x,hy=q.y-unit.y,hd=Math.hypot(hx,hy)||1;if(hd<105){const k=(105-hd)/105;x-=hx/hd*k*1.1;y-=hy/hd*k*1.1;}}
  const wall=72;x+=unit.x<wall?1:unit.x>W-wall?-1:0;y+=unit.y<wall?1:unit.y>H-wall?-1:0;
  const l=Math.hypot(x,y)||1;
  return{x:x/l,y:y/l,ax:nx,ay:ny,target:t.e};
