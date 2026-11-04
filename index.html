@@ -313,7 +313,7 @@ let loopLast=performance.now();function loop(now){let dt=Math.min((now-loopLast)
   const key=new THREE.DirectionalLight(0x9eeeff,2.5);key.position.set(-180,-240,500);scene.add(key);
   const pink=new THREE.PointLight(0xff42c8,90,850),cyan=new THREE.PointLight(0x40eaff,110,900);scene.add(pink,cyan);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshStandardMaterial({color:0x0b1730,metalness:.55,roughness:.48}));floor.position.z=-6;scene.add(floor);
-  const grid=new THREE.GridHelper(1800,36,0x28617c,0x19314d);grid.rotation.x=Math.PI/2;grid.position.z=-3;scene.add(grid);
+  const grid=new THREE.GridHelper(1800,36,0x28617c,0x19314d);grid.rotation.x=Math.PI/2;grid.position.set(0,0,-3);scene.add(grid);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(1,2.2,8,120),new THREE.MeshStandardMaterial({color:0x3be9ff,emissive:0x0b8da8,emissiveIntensity:1.8}));ring.position.z=-1;scene.add(ring);
   const mat=(c,e=c,i=1)=>new THREE.MeshStandardMaterial({color:c,emissive:e,emissiveIntensity:i,metalness:.32,roughness:.3});
   const mats={player:mat(0x65f4ff,0x19cfe8,2.1),enemy:mat(0xa879ff,0x5829a8,1.2),swift:mat(0xff4fc8,0xa40065,1.8),tank:mat(0xff9b59,0xa83b13,1.4),sniper:mat(0x62d6ff,0x126b9c,1.5),artillery:mat(0xffcf65,0xa86b13,1.6),phase:mat(0xbd8bff,0x6b2fd0,2.5),boss:mat(0xff9e43,0xff4b18,2.5),bullet:mat(0xe7ffff,0x65f4ff,3),hostile:mat(0xff9b65,0xff4b28,2.4),orb:mat(0x65f4ff,0x12dfff,3),ally:mat(0x8affb6,0x2cbf73,2),remote:mat(0xffe18a,0xffaa20,2),particle:mat(0x65f4ff,0x65f4ff,1.7)};
@@ -331,6 +331,7 @@ let loopLast=performance.now();function loop(now){let dt=Math.min((now-loopLast)
    const w=s.width||innerWidth,h=s.height||innerHeight;
    if(camera.right!==w/2||camera.top!==h/2){camera.left=-w/2;camera.right=w/2;camera.top=h/2;camera.bottom=-h/2;camera.position.set(w/2,h/2,1000);camera.lookAt(w/2,h/2,0);camera.updateProjectionMatrix();}
    floor.scale.set(w*1.8,h*1.8,1);floor.position.set(w/2,h/2,-6);
+   grid.position.set(w/2,h/2,-3);grid.scale.setScalar(Math.max(w,h)/1800);
    ring.position.set(w/2,h/2,-1);ring.scale.setScalar(Math.max(w,h)*.00058);
    pink.position.set(w*.82,h*.25,170);cyan.position.set(w*.18,h*.78,150);
    let n=0;
