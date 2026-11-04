@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ja"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#080d1b"><meta name="description" content="NEON ARENA — PC・スマホ対応のネオンアクション。季節イベント、年越しカウントダウン、AI対戦。"><title>TANUPIO: NEON ARENA 1.8.0</title>
+<meta name="theme-color" content="#080d1b"><meta name="description" content="NEON ARENA — PC・スマホ対応のネオンアクション。季節イベント、年越しカウントダウン、AI対戦。"><title>TANUPIO: NEON ARENA 1.8.1</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23080d1b'/%3E%3Cpath d='M50 10 90 50 50 90 10 50Z' fill='none' stroke='%2366f7ff' stroke-width='8'/%3E%3Ccircle cx='50' cy='50' r='12' fill='%23ff4fc8'/%3E%3C/svg%3E">
 <style>
 :root{color-scheme:dark;--cyan:#65f4ff;--pink:#ff55c8;--gold:#ffe18a;--panel:#111b31;--line:#344765}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#070b15;color:#f4f7ff;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;touch-action:none}button{font:inherit}canvas{position:absolute;inset:0;width:100%;height:100%;display:block;background:radial-gradient(ellipse at center,#14213d,#070b15)}
@@ -33,7 +33,7 @@ body[data-season] .panel{border-color:color-mix(in srgb,var(--event-primary) 58%
 #game{z-index:1;transition:opacity .2s}#threeCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;pointer-events:none;background:#070b15}body[data-engine="webgpu"] #game{opacity:0}body[data-engine="fallback"] #game{opacity:1}.hud{z-index:2}.touch-ui{z-index:3}
 </style></head><body>
 <canvas id="threeCanvas" aria-hidden="true"></canvas><canvas id="game"></canvas>
-<div class="hud" id="hud"><button id="openGameSettings" class="btn alt" style="position:absolute;left:14px;top:72px;width:auto;padding:8px 12px;pointer-events:auto;z-index:4">⚙ 設定</button><button id="quitGame" class="btn danger" style="position:absolute;right:14px;top:72px;width:auto;padding:8px 12px;pointer-events:auto;z-index:4">退出</button><div class="top"><div class="logo">TANUPIO <small>NEON ARENA / 1.8.0</small></div><div class="stats"><div class="chip">MODE<b id="modeName">SURVIVAL</b></div><div class="chip">WAVE<b id="wave">1</b></div><div class="chip">SCORE<b id="score">0</b></div><div class="chip">LV<b id="level">1</b></div></div></div><div class="bottom"><div class="health"><label>CORE <span id="hptext">100 / 100</span></label><div class="bar"><i id="hp"></i></div><div class="xpbar"><i id="xp"></i></div></div><div class="help">WASD / 矢印 移動 · マウス照準<br>クリック / SPACE 射撃 · Q スキル</div></div></div>
+<div class="hud" id="hud"><button id="openGameSettings" class="btn alt" style="position:absolute;left:14px;top:72px;width:auto;padding:8px 12px;pointer-events:auto;z-index:4">⚙ 設定</button><button id="quitGame" class="btn danger" style="position:absolute;right:14px;top:72px;width:auto;padding:8px 12px;pointer-events:auto;z-index:4">退出</button><div class="top"><div class="logo">TANUPIO <small>NEON ARENA / 1.8.1</small></div><div class="stats"><div class="chip">MODE<b id="modeName">SURVIVAL</b></div><div class="chip">WAVE<b id="wave">1</b></div><div class="chip">SCORE<b id="score">0</b></div><div class="chip">LV<b id="level">1</b></div></div></div><div class="bottom"><div class="health"><label>CORE <span id="hptext">100 / 100</span></label><div class="bar"><i id="hp"></i></div><div class="xpbar"><i id="xp"></i></div></div><div class="help">WASD / 矢印 移動 · マウス照準<br>クリック / SPACE 射撃 · Q スキル</div></div></div>
 <div class="story-map" id="storyMap"><b id="storyMapTitle">STORY ROUTE</b><canvas id="storyMapCanvas" width="240" height="112"></canvas><small id="storyMapLore" style="display:block;color:#a8bddc;line-height:1.35;margin-top:4px"></small></div><div class="touch-ui" id="touch"><div class="pad move" id="movePad"><div class="knob" id="moveKnob"></div></div><div class="pad aim" id="aimPad"><div class="knob" id="aimKnob"></div></div><button class="skill" id="skillBtn">SKILL<br>Q</button></div>
 <div class="toast" id="toast"></div>
 <div class="overlay" id="menu"><div class="panel"><div class="eyebrow">A ORIGINAL GAME BY TANUPIO</div><h1>NEON <span>ARENA</span></h1><p class="lead">狙うのは自分。生き残るのも自分。<br>スマホ操作に最適化したネオン・サバイバルアクション。</p><div class="event-banner" id="seasonBanner"><b>✦ NEON ARENA</b><span>SEASONAL EVENT CALENDAR · JST</span><strong id="eventCountdown" class="event-countdown"></strong></div><div class="modegrid"><button class="mode" id="survival"><b>♾ SURVIVAL</b><small>体力が0になるまで戦い続ける無限モード</small></button><button class="mode" id="story"><b>◆ STORY</b><small>全8ステージ。ボスを倒して物語を進めよう</small></button><button class="mode" id="demo"><b>◈ AI DEMO</b><small>AIのお手本プレイを観戦する</small></button><button class="mode" id="aiCoop"><b>✦ AI CO-OP</b><small>最強AIパートナーと協力して生き残る</small></button><button class="mode" id="aiVersus"><b>⚔ AI VERSUS</b><small>高性能AIライバルとの1対1バトル</small></button><button class="mode" id="bossRush"><b>☠ BOSS RUSH</b><small>強化ボスが連続襲来。撃破数を更新しよう</small></button><button class="mode" id="online"><b>◎ ONLINE PLAY</b><small>公開ルーム・招待コード・クイックマッチ対応</small></button><button class="mode" id="seasonalRaid" disabled><b>✦ SEASONAL RAID</b><small>開催中の年中行事イベントに挑戦・限定報酬を獲得</small></button></div><button class="btn alt hidden" id="resumeRun">▶ セーブデータから再開</button><button class="btn alt settings-open" id="openSettingsBtn">⚙ すべての設定</button><p class="muted">スマホ：左スティックで移動、右スティックで照準・射撃。PC：WASD移動、マウス照準、クリック射撃。オートエイムはいつでも切替可能。</p></div></div>
@@ -302,9 +302,13 @@ let loopLast=performance.now();function loop(now){let dt=Math.min((now-loopLast)
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
   renderer.setClearColor(0x070b15,1);
   await renderer.init();
+  const threeCanvas=document.getElementById('threeCanvas');
+  function syncThreeViewport(){const w=Math.max(1,window.innerWidth),h=Math.max(1,window.innerHeight);renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(w,h,false);threeCanvas.style.width='100%';threeCanvas.style.height='100%';camera.left=0;camera.right=w;camera.top=h;camera.bottom=0;camera.near=.1;camera.far=5000;camera.position.set(w/2,h/2,1000);camera.up.set(0,1,0);camera.lookAt(w/2,h/2,0);camera.updateProjectionMatrix();}
+  syncThreeViewport();
+  window.addEventListener('resize',syncThreeViewport,{passive:true});
   if(!renderer.backend?.isWebGPUBackend)throw new Error('WebGPUバックエンドを利用できません（WebGLは無効）');
   const scene=new THREE.Scene();scene.background=new THREE.Color(0x070b15);scene.fog=new THREE.Fog(0x070b15,700,2400);
-  const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,4000);
+  const camera=new THREE.OrthographicCamera(0,innerWidth,innerHeight,0,.1,5000);
   scene.add(new THREE.HemisphereLight(0x9bcaff,0x101528,2));
   const key=new THREE.DirectionalLight(0x9eeeff,2.5);key.position.set(-180,-240,500);scene.add(key);
   const pink=new THREE.PointLight(0xff42c8,90,850),cyan=new THREE.PointLight(0x40eaff,110,900);scene.add(pink,cyan);
@@ -322,7 +326,7 @@ let loopLast=performance.now();function loop(now){let dt=Math.min((now-loopLast)
    requestAnimationFrame(render);
    const s=window.__NEON3D_STATE__;if(!s||!window.__NEON3D_ENGINE__?.isActive)return;
    const w=s.width||innerWidth,h=s.height||innerHeight;
-   camera.aspect=w/h;camera.position.set(w/2,h/2,Math.max(w,h)*1.35);camera.lookAt(w/2,h/2,0);camera.updateProjectionMatrix();
+   if(camera.right!==w||camera.top!==h){camera.left=0;camera.right=w;camera.top=h;camera.bottom=0;camera.position.set(w/2,h/2,1000);camera.lookAt(w/2,h/2,0);camera.updateProjectionMatrix();}
    floor.scale.set(w*1.8,h*1.8,1);floor.position.set(w/2,h/2,-6);
    ring.position.set(w/2,h/2,-1);ring.scale.setScalar(Math.max(w,h)*.00058);
    pink.position.set(w*.82,h*.25,170);cyan.position.set(w*.18,h*.78,150);
