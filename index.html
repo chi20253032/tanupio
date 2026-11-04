@@ -295,10 +295,10 @@ let loopLast=performance.now();function loop(now){let dt=Math.min((now-loopLast)
 (async()=>{
  const status=t=>{window.__NEON3D_STATUS__=t;const el=document.getElementById('engineStatus');if(el)el.textContent=t};
  try{
-  if(!navigator.gpu)throw new Error('このブラウザ／端末はWebGPUに対応していません');
-  const THREE=await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.js');
+  if(!navigator.gpu)throw new Error('このブラウザ／端末はWebGPUに対応していません');const adapter=await navigator.gpu.requestAdapter();if(!adapter)throw new Error('WebGPUアダプターを取得できません（WebGLは使用しません）');
+  const THREE=await import('https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.webgpu.js');
   const canvas=document.getElementById('threeCanvas');
-  const renderer=new THREE.WebGPURenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
+  const renderer=new THREE.WebGPURenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance',forceWebGL:false});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
   renderer.setClearColor(0x070b15,1);
   await renderer.init();
